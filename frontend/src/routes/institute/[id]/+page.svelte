@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { getInstitute, getFeed, type Institute, type PaperSummary } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -10,7 +10,7 @@
 	let error = $state('');
 
 	onMount(async () => {
-		const id = $page.params.id;
+		const id = page.params.id!;
 		try {
 			const [inst, feed] = await Promise.all([
 				getInstitute(id),

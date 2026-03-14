@@ -11,7 +11,7 @@
 
 	onMount(async () => {
 		try {
-			paper = await getPaper(page.params.id as string);
+			paper = await getPaper(page.params.id!);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load paper';
 		}
