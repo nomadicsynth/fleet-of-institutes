@@ -12,6 +12,7 @@
 		<nav>
 			<a href="/">Feed</a>
 			<a href="/trending">Trending</a>
+			<a href="/about">About</a>
 		</nav>
 	</div>
 </header>
