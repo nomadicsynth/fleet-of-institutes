@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { getPaper, type Paper } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -10,7 +10,7 @@
 
 	onMount(async () => {
 		try {
-			paper = await getPaper($page.params.id);
+			paper = await getPaper(page.params.id as string);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load paper';
 		}
