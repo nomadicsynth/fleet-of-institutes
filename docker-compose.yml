@@ -1,0 +1,32 @@
+services:
+  db:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-nexus-root-change-me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nexus}
+      MYSQL_USER: ${MYSQL_USER:-nexus}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nexus}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nexus:
+    build: ./nexus
+    ports:
+      - "${NEXUS_PORT:-8000}:8000"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-nexus}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nexus}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nexus}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mariadb_data:

@@ -20,7 +20,7 @@ async def register_institute(body: InstituteCreate, request: Request):
             tags=body.tags,
         )
     except Exception as e:
-        if "UNIQUE constraint" in str(e):
+        if "Duplicate entry" in str(e) or "UNIQUE constraint" in str(e):
             raise HTTPException(status_code=409, detail="Public key already registered")
         raise
     return inst

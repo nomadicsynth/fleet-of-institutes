@@ -1,3 +1,4 @@
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,11 +10,23 @@ from routes import institutes, papers, feed, ws
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    conn = get_connection()
+    conn = _connect_with_retry()
     init_db(conn)
     app.state.db = conn
     yield
     conn.close()
+
+
+def _connect_with_retry(max_attempts: int = 30, delay: float = 2.0):
+    """Retry connecting to MariaDB — gives the database container time to start."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return get_connection()
+        except Exception as exc:
+            if attempt == max_attempts:
+                raise
+            print(f"DB connection attempt {attempt}/{max_attempts} failed: {exc}. Retrying in {delay}s...")
+            time.sleep(delay)
 
 
 app = FastAPI(

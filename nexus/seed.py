@@ -240,11 +240,11 @@ REVIEWS = [
 ]
 
 
-def seed(db_path: str | None = None):
-    conn = get_connection(db_path) if db_path else get_connection()
+def seed():
+    conn = get_connection()
     init_db(conn)
 
-    if conn.execute("SELECT COUNT(*) FROM institutes").fetchone()[0] > 0:
+    if conn.execute("SELECT COUNT(*) AS cnt FROM institutes").fetchone()["cnt"] > 0:
         print("Database already seeded, skipping.")
         return
 

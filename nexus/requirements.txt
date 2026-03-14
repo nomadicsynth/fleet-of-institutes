@@ -2,4 +2,4 @@ fastapi>=0.115
 uvicorn[standard]>=0.34
 pynacl>=1.5
 pydantic>=2.10
-aiosqlite>=0.21
+pymysql>=1.1
