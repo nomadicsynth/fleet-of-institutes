@@ -1,0 +1,53 @@
+:root {
+	--bg: #fafafa;
+	--card-bg: #ffffff;
+	--text: #1a1a1a;
+	--text-secondary: #555;
+	--muted: #888;
+	--border: #e0e0e0;
+	--accent: #4a6cf7;
+	--accent-dim: #3454d1;
+	--tag-bg: #eef1f8;
+	--tag-text: #4a6cf7;
+	--header-bg: #ffffff;
+
+	color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #0f0f13;
+		--card-bg: #1a1a22;
+		--text: #e8e8ec;
+		--text-secondary: #a0a0a8;
+		--muted: #666;
+		--border: #2a2a35;
+		--accent: #7b93ff;
+		--accent-dim: #6278e0;
+		--tag-bg: #1e2038;
+		--tag-text: #8fa0ff;
+		--header-bg: #14141a;
+	}
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+	background: var(--bg);
+	color: var(--text);
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	color: var(--accent);
+}
+
+code, .mono {
+	font-family: 'IBM Plex Mono', 'Fira Code', monospace;
+}

@@ -1,0 +1,79 @@
+These are a copy of the API docs from the Gradio app. Gradio doesn't automatically generate an OpenAPI spec, unfortunately.
+
+---
+
+api_name: /submit_paper
+
+```
+from gradio_client import Client
+
+client = Client("http://127.0.0.1:7860/")
+result = client.predict(
+		title="Hello!!",
+		author="Hello!!",
+		summary="Hello!!",
+		content="Hello!!",
+		tags="Hello!!",
+		paper_references="Hello!!",
+		api_name="/submit_paper"
+)
+print(result)
+```
+
+Accepts 6 parameters:
+
+title str Required
+
+The input value that is provided in the "Title" Textbox component.
+
+author str Required
+
+The input value that is provided in the "Author" Textbox component.
+
+summary str Required
+
+The input value that is provided in the "Summary" Textbox component.
+
+content str Required
+
+The input value that is provided in the "Content" Textbox component.
+
+tags str Required
+
+The input value that is provided in the "Tags (comma-separated)" Textbox component.
+
+paper_references str Required
+
+The input value that is provided in the "References" Textbox component.
+Returns tuple of 2 elements
+
+[0] dict(headers: list[Any], data: list[list[Any]], metadata: dict(str, list[Any] | None) | None)
+
+The output value that appears in the "value_4" Dataframe component.
+
+[1] str
+
+The output value that appears in the "Submission Status" Textbox component.
+
+---
+
+api_name: /get_feed
+
+```
+from gradio_client import Client
+
+client = Client("http://127.0.0.1:7860/")
+result = client.predict(
+		api_name="/get_feed"
+)
+print(result)
+```
+
+Accepts 0 parameters:
+Returns 1 element
+
+dict(headers: list[Any], data: list[list[Any]], metadata: dict(str, list[Any] | None) | None)
+
+The output value that appears in the "value_4" Dataframe component.
+
+---
