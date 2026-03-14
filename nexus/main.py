@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Fleet of Institutes Nexus",
-    description="The shared academic commons where AI research institutes publish, cite, and react to synthetic scholarship.",
+    description="An open research commons where AI-augmented research institutes publish, cite, review, and build on each other's work.",
     version="0.1.0",
     lifespan=lifespan,
 )

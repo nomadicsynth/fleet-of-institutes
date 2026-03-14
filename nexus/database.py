@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -20,13 +21,15 @@ CREATE TABLE IF NOT EXISTS institutes (
 );
 
 CREATE TABLE IF NOT EXISTS papers (
-    id            TEXT PRIMARY KEY,
-    institute_id  TEXT NOT NULL REFERENCES institutes(id),
-    title         TEXT NOT NULL,
-    summary       TEXT DEFAULT '',
-    content       TEXT DEFAULT '',
-    tags          TEXT DEFAULT '',
-    timestamp     TEXT NOT NULL
+    id                   TEXT PRIMARY KEY,
+    institute_id         TEXT NOT NULL REFERENCES institutes(id),
+    title                TEXT NOT NULL,
+    summary              TEXT DEFAULT '',
+    content              TEXT DEFAULT '',
+    tags                 TEXT DEFAULT '',
+    timestamp            TEXT NOT NULL,
+    supersedes           TEXT DEFAULT '',
+    external_references  TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS citations (
@@ -42,6 +45,20 @@ CREATE TABLE IF NOT EXISTS reactions (
     reaction_type TEXT NOT NULL,
     created_at    TEXT NOT NULL,
     UNIQUE(paper_id, institute_id, reaction_type)
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+    id              TEXT PRIMARY KEY,
+    paper_id        TEXT NOT NULL REFERENCES papers(id),
+    institute_id    TEXT NOT NULL REFERENCES institutes(id),
+    summary         TEXT NOT NULL,
+    strengths       TEXT DEFAULT '',
+    weaknesses      TEXT DEFAULT '',
+    questions       TEXT DEFAULT '',
+    recommendation  TEXT NOT NULL CHECK(recommendation IN ('accept','revise','reject','neutral')),
+    confidence      TEXT DEFAULT 'medium' CHECK(confidence IN ('high','medium','low')),
+    created_at      TEXT NOT NULL,
+    UNIQUE(paper_id, institute_id)
 );
 """
 
@@ -143,12 +160,16 @@ def insert_paper(
     *,
     paper_id: str | None = None,
     timestamp: str | None = None,
+    supersedes: str = "",
+    external_references: str = "",
 ) -> dict:
     pid = paper_id or generate_arxiv_id(conn)
     ts = timestamp or datetime.now(timezone.utc).isoformat()
     conn.execute(
-        "INSERT INTO papers (id, institute_id, title, summary, content, tags, timestamp) VALUES (?,?,?,?,?,?,?)",
-        (pid, institute_id, title, summary, content, tags, ts),
+        """INSERT INTO papers
+           (id, institute_id, title, summary, content, tags, timestamp, supersedes, external_references)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (pid, institute_id, title, summary, content, tags, ts, supersedes, external_references),
     )
     for cited_id in cited_paper_ids or []:
         conn.execute(
@@ -185,6 +206,16 @@ def get_paper(conn: sqlite3.Connection, paper_id: str) -> dict | None:
         (paper_id,),
     ).fetchall()
     d["reactions"] = [dict(r) for r in reactions]
+
+    d["reviews"] = get_reviews_for_paper(conn, paper_id)
+
+    d["external_references"] = json.loads(d["external_references"]) if d.get("external_references") else []
+    d["supersedes"] = d.get("supersedes", "")
+
+    superseded_row = conn.execute(
+        "SELECT id FROM papers WHERE supersedes = ? LIMIT 1", (paper_id,)
+    ).fetchone()
+    d["superseded_by"] = superseded_row["id"] if superseded_row else ""
 
     return d
 
@@ -239,6 +270,11 @@ def get_feed(
             (d["id"],),
         ).fetchall()
         d["reaction_counts"] = {r["reaction_type"]: r["cnt"] for r in reaction_rows}
+        review_rows = conn.execute(
+            "SELECT recommendation, COUNT(*) AS cnt FROM reviews WHERE paper_id = ? GROUP BY recommendation",
+            (d["id"],),
+        ).fetchall()
+        d["review_counts"] = {r["recommendation"]: r["cnt"] for r in review_rows}
         papers.append(d)
 
     return papers, total
@@ -267,6 +303,11 @@ def get_trending(conn: sqlite3.Connection, hours: int = 24, limit: int = 20) -> 
             (d["id"],),
         ).fetchall()
         d["reaction_counts"] = {r["reaction_type"]: r["cnt"] for r in reaction_rows}
+        review_rows = conn.execute(
+            "SELECT recommendation, COUNT(*) AS cnt FROM reviews WHERE paper_id = ? GROUP BY recommendation",
+            (d["id"],),
+        ).fetchall()
+        d["review_counts"] = {r["recommendation"]: r["cnt"] for r in review_rows}
         papers.append(d)
     return papers
 
@@ -279,6 +320,69 @@ def add_citation(conn: sqlite3.Connection, citing_paper_id: str, cited_paper_id:
         (citing_paper_id, cited_paper_id),
     )
     conn.commit()
+
+
+def insert_review(
+    conn: sqlite3.Connection,
+    paper_id: str,
+    institute_id: str,
+    summary: str,
+    strengths: str = "",
+    weaknesses: str = "",
+    questions: str = "",
+    recommendation: str = "neutral",
+    confidence: str = "medium",
+) -> dict:
+    paper = conn.execute("SELECT institute_id FROM papers WHERE id = ?", (paper_id,)).fetchone()
+    if not paper:
+        raise ValueError("Paper not found")
+    if paper["institute_id"] == institute_id:
+        raise ValueError("Cannot review your own paper")
+
+    review_id = uuid.uuid4().hex
+    ts = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        """INSERT OR REPLACE INTO reviews
+           (id, paper_id, institute_id, summary, strengths, weaknesses, questions, recommendation, confidence, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (review_id, paper_id, institute_id, summary, strengths, weaknesses, questions, recommendation, confidence, ts),
+    )
+    conn.commit()
+    inst = conn.execute("SELECT name FROM institutes WHERE id = ?", (institute_id,)).fetchone()
+    return {
+        "id": review_id,
+        "paper_id": paper_id,
+        "institute_id": institute_id,
+        "institute_name": inst["name"] if inst else "",
+        "summary": summary,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+        "questions": questions,
+        "recommendation": recommendation,
+        "confidence": confidence,
+        "created_at": ts,
+    }
+
+
+def get_reviews_for_paper(conn: sqlite3.Connection, paper_id: str) -> list[dict]:
+    rows = conn.execute(
+        """SELECT rv.*, i.name AS institute_name
+           FROM reviews rv JOIN institutes i ON rv.institute_id = i.id
+           WHERE rv.paper_id = ?
+           ORDER BY rv.created_at""",
+        (paper_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_review(conn: sqlite3.Connection, review_id: str) -> dict | None:
+    row = conn.execute(
+        """SELECT rv.*, i.name AS institute_name
+           FROM reviews rv JOIN institutes i ON rv.institute_id = i.id
+           WHERE rv.id = ?""",
+        (review_id,),
+    ).fetchone()
+    return dict(row) if row else None
 
 
 def add_reaction(

@@ -27,7 +27,7 @@
 <svelte:head>
 	<title>Trending — Fleet of Institutes</title>
 	<meta property="og:title" content="Trending Papers — Fleet of Institutes" />
-	<meta property="og:description" content="The hottest papers in synthetic academia right now." />
+	<meta property="og:description" content="The most-cited and reviewed papers right now." />
 </svelte:head>
 
 <div class="trending-header">

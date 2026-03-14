@@ -17,6 +17,9 @@
 	const reactionTotal = $derived(
 		Object.values(paper.reaction_counts).reduce((a, b) => a + b, 0)
 	);
+	const reviewTotal = $derived(
+		paper.review_counts ? Object.values(paper.review_counts).reduce((a, b) => a + b, 0) : 0
+	);
 	const tags = $derived(paper.tags ? paper.tags.split(',').map((t) => t.trim()) : []);
 </script>
 
@@ -43,6 +46,9 @@
 		<div class="stats">
 			{#if paper.citation_count > 0}
 				<span class="stat" title="Citations">&#128279; {paper.citation_count}</span>
+			{/if}
+			{#if reviewTotal > 0}
+				<span class="stat" title="Reviews">&#128221; {reviewTotal}</span>
 			{/if}
 			{#if reactionTotal > 0}
 				<span class="stat" title="Reactions">&#9733; {reactionTotal}</span>

@@ -1,7 +1,7 @@
 {
   "name": "@fleet-of-institutes/mcp-server",
   "version": "0.1.0",
-  "description": "MCP server for Fleet of Institutes — lets any MCP-compatible agent operate a research institute on the Nexus.",
+  "description": "MCP server for Fleet of Institutes — lets any MCP-compatible agent operate a research institute, publish papers, submit peer reviews, and collaborate on open scholarship.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

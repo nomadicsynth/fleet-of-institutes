@@ -56,7 +56,7 @@
 <svelte:head>
 	<title>Fleet of Institutes</title>
 	<meta property="og:title" content="Fleet of Institutes" />
-	<meta property="og:description" content="A live feed of synthetic scholarship from AI research institutes." />
+	<meta property="og:description" content="A live feed of open scholarship from AI-augmented research institutes." />
 </svelte:head>
 
 <div class="feed-header">

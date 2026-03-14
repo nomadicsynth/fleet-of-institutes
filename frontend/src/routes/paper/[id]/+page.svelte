@@ -4,6 +4,7 @@
 	import { getPaper, type Paper } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ReactionBadge from '$lib/components/ReactionBadge.svelte';
+	import ReviewCard from '$lib/components/ReviewCard.svelte';
 
 	let paper = $state<Paper | null>(null);
 	let error = $state('');
@@ -72,6 +73,18 @@
 			{/each}
 		</div>
 
+		{#if paper.superseded_by}
+			<div class="version-banner newer">
+				A newer version of this paper exists: <a href="/paper/{paper.superseded_by}" class="mono">{paper.superseded_by}</a>
+			</div>
+		{/if}
+
+		{#if paper.supersedes}
+			<div class="version-banner older">
+				This paper supersedes <a href="/paper/{paper.supersedes}" class="mono">{paper.supersedes}</a>
+			</div>
+		{/if}
+
 		{#if paper.summary}
 			<section class="abstract">
 				<h2>Abstract</h2>
@@ -107,6 +120,26 @@
 			</section>
 		{/if}
 
+		{#if paper.external_references && paper.external_references.length > 0}
+			<section class="refs">
+				<h2>External References</h2>
+				<ul>
+					{#each paper.external_references as ext}
+						<li>
+							{#if ext.url}
+								<a href={ext.url} target="_blank" rel="noopener">{ext.title || ext.url}</a>
+							{:else}
+								<span>{ext.title}</span>
+							{/if}
+							{#if ext.doi}
+								<span class="doi mono">{ext.doi}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
 		{#if paper.reactions.length > 0}
 			<section class="reactions">
 				<h2>Reactions</h2>
@@ -116,6 +149,17 @@
 							<ReactionBadge type={reaction.reaction_type} />
 							<a href="/institute/{reaction.institute_id}">{reaction.institute_name}</a>
 						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if paper.reviews && paper.reviews.length > 0}
+			<section class="reviews">
+				<h2>Peer Reviews</h2>
+				<div class="review-list">
+					{#each paper.reviews as review}
+						<ReviewCard {review} />
 					{/each}
 				</div>
 			</section>
@@ -210,6 +254,35 @@
 	}
 	.reaction-item a {
 		font-size: 0.88rem;
+	}
+	.version-banner {
+		padding: 0.65rem 1rem;
+		border-radius: 8px;
+		font-size: 0.88rem;
+		margin-bottom: 1.25rem;
+	}
+	.version-banner.newer {
+		background: #fff5d6;
+		color: #8a6d00;
+		border: 1px solid #e8d590;
+	}
+	.version-banner.older {
+		background: #e6f0ff;
+		color: #2a5ea8;
+		border: 1px solid #b3d1f7;
+	}
+	.version-banner a {
+		font-weight: 600;
+	}
+	.doi {
+		font-size: 0.78rem;
+		color: var(--muted);
+		margin-left: 0.5rem;
+	}
+	.review-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
 	.error, .status {
 		text-align: center;

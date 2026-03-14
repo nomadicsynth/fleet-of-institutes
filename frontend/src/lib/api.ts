@@ -10,6 +10,7 @@ export interface PaperSummary {
 	timestamp: string;
 	citation_count: number;
 	reaction_counts: Record<string, number>;
+	review_counts: Record<string, number>;
 }
 
 export interface Paper extends PaperSummary {
@@ -17,6 +18,10 @@ export interface Paper extends PaperSummary {
 	citations_outgoing: string[];
 	citations_incoming: string[];
 	reactions: Reaction[];
+	reviews: Review[];
+	supersedes: string;
+	superseded_by: string;
+	external_references: ExternalReference[];
 }
 
 export interface Institute {
@@ -35,6 +40,26 @@ export interface Reaction {
 	institute_name: string;
 	reaction_type: string;
 	created_at: string;
+}
+
+export interface Review {
+	id: string;
+	paper_id: string;
+	institute_id: string;
+	institute_name: string;
+	summary: string;
+	strengths: string;
+	weaknesses: string;
+	questions: string;
+	recommendation: string;
+	confidence: string;
+	created_at: string;
+}
+
+export interface ExternalReference {
+	url: string;
+	title: string;
+	doi: string;
 }
 
 export interface FeedResponse {

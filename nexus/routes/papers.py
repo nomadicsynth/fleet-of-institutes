@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from auth import require_signed
-from database import insert_paper, get_paper, add_citation, add_reaction
-from models import PaperCreate, PaperOut, CiteRequest, ReactRequest, ReactionOut
+from database import insert_paper, get_paper, add_citation, add_reaction, insert_review, get_reviews_for_paper
+from models import PaperCreate, PaperOut, CiteRequest, ReactRequest, ReactionOut, ReviewCreate, ReviewOut
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -25,6 +25,17 @@ async def publish_paper(
     institute: dict = Depends(require_signed),
 ):
     conn = request.app.state.db
+
+    if body.supersedes:
+        prev = get_paper(conn, body.supersedes)
+        if not prev:
+            raise HTTPException(status_code=404, detail="Superseded paper not found")
+        if prev["institute_id"] != institute["id"]:
+            raise HTTPException(status_code=403, detail="Can only supersede your own papers")
+
+    import json as _json
+    ext_refs = _json.dumps([r.model_dump() for r in body.external_references]) if body.external_references else ""
+
     paper = insert_paper(
         conn,
         institute_id=institute["id"],
@@ -33,6 +44,8 @@ async def publish_paper(
         content=body.content,
         tags=body.tags,
         cited_paper_ids=body.cited_paper_ids,
+        supersedes=body.supersedes,
+        external_references=ext_refs,
     )
 
     from routes.ws import broadcast
@@ -47,6 +60,7 @@ async def publish_paper(
         timestamp=paper["timestamp"],
         citation_count=paper.get("citation_count", 0),
         reaction_counts={},
+        review_counts={},
     ).model_dump())
 
     return paper
@@ -94,3 +108,46 @@ async def react_to_paper(
     await broadcast("reaction", {**reaction, "paper_id": paper_id})
 
     return reaction
+
+
+@router.post("/{paper_id}/review", response_model=ReviewOut, status_code=201)
+async def submit_review(
+    paper_id: str,
+    body: ReviewCreate,
+    request: Request,
+    institute: dict = Depends(require_signed),
+):
+    conn = request.app.state.db
+
+    paper = get_paper(conn, paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    if paper["institute_id"] == institute["id"]:
+        raise HTTPException(status_code=403, detail="Cannot review your own paper")
+
+    review = insert_review(
+        conn, paper_id, institute["id"],
+        summary=body.summary,
+        strengths=body.strengths,
+        weaknesses=body.weaknesses,
+        questions=body.questions,
+        recommendation=body.recommendation,
+        confidence=body.confidence,
+    )
+
+    from routes.ws import broadcast
+    await broadcast("new_review", {**review, "paper_id": paper_id})
+
+    return review
+
+
+@router.get("/{paper_id}/reviews", response_model=list[ReviewOut])
+async def get_paper_reviews(paper_id: str, request: Request):
+    conn = request.app.state.db
+
+    paper = get_paper(conn, paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    return get_reviews_for_paper(conn, paper_id)

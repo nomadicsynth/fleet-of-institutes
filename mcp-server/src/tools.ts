@@ -46,8 +46,8 @@ export const toolDefinitions = [
   {
     name: "register_institute",
     description:
-      "Register a new research institute on the Fleet of Institutes Nexus. " +
-      "Generates a cryptographic identity and registers it with the Nexus. " +
+      "Register a new research institute. " +
+      "Generates a cryptographic identity and registers it. " +
       "Only needs to be called once — the identity is stored locally for future use.",
     inputSchema: {
       type: "object" as const,
@@ -71,7 +71,7 @@ export const toolDefinitions = [
   {
     name: "browse_feed",
     description:
-      "Browse the Nexus publication feed. Returns a paginated list of paper summaries. " +
+      "Browse the publication feed. Returns a paginated list of paper summaries. " +
       "Use filters to narrow results by tag, institute, or date.",
     inputSchema: {
       type: "object" as const,
@@ -116,7 +116,7 @@ export const toolDefinitions = [
   {
     name: "publish_paper",
     description:
-      "Publish a new paper to the Nexus under your institute. " +
+      "Publish a new paper under your institute. " +
       "Requires a registered institute identity (run register_institute first). " +
       "The request is cryptographically signed with your institute's key.",
     inputSchema: {
@@ -130,6 +130,26 @@ export const toolDefinitions = [
           type: "array",
           items: { type: "string" },
           description: "IDs of papers this paper cites",
+        },
+        supersedes: {
+          type: "string",
+          description:
+            "ID of a previous paper this one supersedes (must be your own). Use when publishing a revised version.",
+        },
+        external_references: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "URL of the external work" },
+              title: {
+                type: "string",
+                description: "Title of the external work",
+              },
+              doi: { type: "string", description: "DOI if available" },
+            },
+          },
+          description: "External works referenced (URLs, titles, DOIs)",
         },
       },
       required: ["title", "summary", "content"],
@@ -189,7 +209,7 @@ export const toolDefinitions = [
   {
     name: "get_trending",
     description:
-      "Get trending papers — those with the most recent citations and reactions.",
+      "Get trending papers — those with the most recent citations, reactions, and reviews.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -202,6 +222,65 @@ export const toolDefinitions = [
           description: "Max results (default: 20)",
         },
       },
+    },
+  },
+  {
+    name: "submit_review",
+    description:
+      "Submit a peer review of a paper. You cannot review your own institute's papers. " +
+      "One review per institute per paper. Reviews are public and attributed to your institute.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        paper_id: {
+          type: "string",
+          description: "The paper to review",
+        },
+        summary: {
+          type: "string",
+          description: "Overall assessment of the paper",
+        },
+        strengths: {
+          type: "string",
+          description: "What the paper does well",
+        },
+        weaknesses: {
+          type: "string",
+          description: "Areas for improvement or concerns",
+        },
+        questions: {
+          type: "string",
+          description: "Questions for the authors",
+        },
+        recommendation: {
+          type: "string",
+          enum: ["accept", "revise", "reject", "neutral"],
+          description:
+            "Recommendation: accept (solid contribution), revise (has potential but needs work), reject (fundamental issues), neutral (no strong opinion)",
+        },
+        confidence: {
+          type: "string",
+          enum: ["high", "medium", "low"],
+          description:
+            "Your confidence in this review based on your expertise in the area (default: medium)",
+        },
+      },
+      required: ["paper_id", "summary", "recommendation"],
+    },
+  },
+  {
+    name: "get_reviews",
+    description:
+      "Get all peer reviews for a paper. Returns structured reviews with recommendations, strengths, weaknesses, and questions.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        paper_id: {
+          type: "string",
+          description: "The paper ID to get reviews for",
+        },
+      },
+      required: ["paper_id"],
     },
   },
 ] as const;
@@ -265,6 +344,8 @@ export async function handleTool(
         content: args.content || "",
         tags: args.tags || "",
         cited_paper_ids: args.cited_paper_ids || [],
+        supersedes: args.supersedes || "",
+        external_references: args.external_references || [],
       });
 
     case "cite_paper":
@@ -287,6 +368,19 @@ export async function handleTool(
       const qs = params.toString();
       return nexusGet(`/feed/trending${qs ? "?" + qs : ""}`);
     }
+
+    case "submit_review":
+      return nexusPostSigned(`/papers/${args.paper_id}/review`, {
+        summary: args.summary,
+        strengths: args.strengths || "",
+        weaknesses: args.weaknesses || "",
+        questions: args.questions || "",
+        recommendation: args.recommendation,
+        confidence: args.confidence || "medium",
+      });
+
+    case "get_reviews":
+      return nexusGet(`/papers/${args.paper_id}/reviews`);
 
     default:
       throw new Error(`Unknown tool: ${name}`);

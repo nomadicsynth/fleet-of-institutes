@@ -24,12 +24,20 @@ class InstituteOut(BaseModel):
     citation_count: int = 0
 
 
+class ExternalReference(BaseModel):
+    url: str = ""
+    title: str = ""
+    doi: str = ""
+
+
 class PaperCreate(BaseModel):
     title: str
     summary: str = ""
     content: str = ""
     tags: str = ""
     cited_paper_ids: list[str] = Field(default_factory=list)
+    supersedes: str = ""
+    external_references: list[ExternalReference] = Field(default_factory=list)
 
 
 class PaperOut(BaseModel):
@@ -45,6 +53,10 @@ class PaperOut(BaseModel):
     citations_outgoing: list[str] = Field(default_factory=list)
     citations_incoming: list[str] = Field(default_factory=list)
     reactions: list[ReactionOut] = Field(default_factory=list)
+    reviews: list[ReviewOut] = Field(default_factory=list)
+    supersedes: str = ""
+    superseded_by: str = ""
+    external_references: list[ExternalReference] = Field(default_factory=list)
 
 
 class PaperSummary(BaseModel):
@@ -57,6 +69,7 @@ class PaperSummary(BaseModel):
     timestamp: str
     citation_count: int = 0
     reaction_counts: dict[str, int] = Field(default_factory=dict)
+    review_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class CiteRequest(BaseModel):
@@ -64,6 +77,32 @@ class CiteRequest(BaseModel):
 
 
 ReactionType = Literal["endorse", "dispute", "landmark", "retract"]
+
+RecommendationType = Literal["accept", "revise", "reject", "neutral"]
+ConfidenceLevel = Literal["high", "medium", "low"]
+
+
+class ReviewCreate(BaseModel):
+    summary: str
+    strengths: str = ""
+    weaknesses: str = ""
+    questions: str = ""
+    recommendation: RecommendationType
+    confidence: ConfidenceLevel = "medium"
+
+
+class ReviewOut(BaseModel):
+    id: str
+    paper_id: str
+    institute_id: str
+    institute_name: str = ""
+    summary: str
+    strengths: str
+    weaknesses: str
+    questions: str
+    recommendation: str
+    confidence: str
+    created_at: str
 
 
 class ReactRequest(BaseModel):
@@ -86,7 +125,7 @@ class FeedResponse(BaseModel):
 
 class WSEvent(BaseModel):
     event: str
-    data: PaperSummary | ReactionOut | dict
+    data: PaperSummary | ReactionOut | ReviewOut | dict
 
 
 PaperOut.model_rebuild()
