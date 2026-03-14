@@ -2,7 +2,7 @@ services:
   db:
     image: mariadb:11
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-nexus-root-change-me}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
       MYSQL_DATABASE: ${MYSQL_DATABASE:-nexus}
       MYSQL_USER: ${MYSQL_USER:-nexus}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nexus}
