@@ -24,6 +24,10 @@ services:
       MYSQL_USER: ${MYSQL_USER:-nexus}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nexus}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-nexus}
+      NEXUS_SIGNING_KEY: ${NEXUS_SIGNING_KEY:-}
+      SKILL_DIR: /skill
+    volumes:
+      - ./openclaw-skill:/skill:ro
     depends_on:
       db:
         condition: service_healthy
