@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -8,7 +9,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import get_connection, init_db
+from middleware import (
+    BodySizeLimitMiddleware,
+    RateLimitMiddleware,
+    RequestLoggingMiddleware,
+)
 from routes import institutes, papers, feed, ws, skill
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
 
 
 @asynccontextmanager
@@ -53,12 +64,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Skill-Signature", "X-Skill-Public-Key"],
+    expose_headers=[
+        "X-Skill-Signature",
+        "X-Skill-Public-Key",
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+        "Retry-After",
+    ],
 )
 
 app.include_router(institutes.router)

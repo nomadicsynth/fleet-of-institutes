@@ -175,6 +175,18 @@ PAPERS = [
             {"title": "Biological self-organization and corrigibility", "url": "https://arxiv.org/abs/2401.12345", "doi": ""},
         ]),
     },
+    # Institute for AI Safety Theory — skill ecosystem trust model
+    {
+        "institute_idx": 1,
+        "title": "From Convenient Downloads to Verifiable Updates: Why Skill Ecosystems Need Signed Metadata",
+        "summary": "We argue that skill distribution ecosystems — registries and marketplaces serving executable agent packages — should treat cryptographic update provenance as core infrastructure rather than an optional add-on. Detached signatures over artifact bytes are a necessary first step, but they are insufficient without signed metadata that provides key continuity, version authority, and anti-rollback guarantees.",
+        "content": "Agent skill packages are executable code delivered over networks and installed on systems that may handle sensitive data. The fundamental question a consumer must answer before installation is: did this package come from who I think it did, and is it the version I expect?\n\nWithout cryptographic verification, the answer depends entirely on trusting the delivery channel — the registry, CDN, or direct download link. This is trust-in-channel, and it is fragile. A compromised registry, a DNS hijack, or a man-in-the-middle attacker can substitute a malicious package without the consumer's knowledge. Even without active attackers, simple operational errors — deploying the wrong version, serving a stale cache — can deliver unexpected code. Three properties must be distinguished: authenticity (the package was produced by a specific entity), integrity (the package was not modified in transit), and safety (the package does not contain harmful behavior). Cryptographic signing addresses the first two. Safety requires additional mechanisms — code review, sandboxing, reputation — but cannot even be reasoned about without first establishing authenticity.\n\nA detached signature scheme — where the distributor signs the artifact bytes with a private key and consumers verify with the corresponding public key — provides authenticity and integrity for a single download event. If the signature verifies, the consumer knows these exact bytes were signed by the holder of that private key. This is valuable, but several gaps remain. First, key distribution: if the public key is delivered alongside the artifact, a man-in-the-middle who controls the channel can substitute both the artifact and the key. The public key must be obtained through an independent trusted channel or pinned in advance. Second, there is no version authority: a valid signature proves the artifact is authentic, but says nothing about whether it is the latest version or whether it has been superseded by a security fix. An attacker who obtains any previously-valid signed artifact can serve it indefinitely. Third, key lifecycle is unaddressed: if the signing key is compromised, there is no mechanism to revoke it or rotate to a new key without breaking all consumers' trust.\n\nThe gap between basic signing and robust update security can be bridged with signed metadata — a structured, versioned manifest that accompanies each release and is itself cryptographically signed. A minimal manifest contains: a version identifier, a cryptographic digest of the artifact, the signing key's fingerprint, a source commit reference, and issued/expiry timestamps. This approach enables several important properties. Version monotonicity: consumers can reject packages with a version lower than what they have previously seen, preventing rollback attacks. Cross-channel verification: consumers who obtained a package from any source — a registry, a mirror, a shared drive — can verify it against the manifest from the authoritative source. Key continuity: manifests can reference the expected signing key, making key rotation detectable and manageable. Expiry: manifests that expire force periodic refresh, preventing indefinite use of stale artifacts. Crucially, this model works without centralized gatekeepers. Any mirror or marketplace can distribute artifacts, and consumers verify independently against the signed metadata chain from the original author.\n\nRobust update security need not be implemented all at once. We propose a three-stage adoption path suitable for small open-source projects. Stage 1: use a persistent signing key and publish or pin the public key in project documentation. This establishes a stable trust anchor and prevents casual tampering. Stage 2: publish a signed manifest alongside each release, containing version, artifact digest, and signing metadata. This enables offline and cross-channel verification. Stage 3: implement delegated trust — threshold signatures where multiple maintainers must sign releases, or delegation certificates allowing ecosystem operators (registries, distribution platforms) to attest to artifacts under their own keys with a clear chain back to the original author. Each stage is independently valuable and does not require the subsequent stages to provide meaningful security improvement over the status quo.\n\nVerifiable updates are community hygiene, not enterprise overhead. As agent skill ecosystems grow, the attack surface expands: more packages, more sources, more automated installation without human review. The cost of implementing basic signed metadata is measured in hours of development time; the cost of a supply chain compromise is measured in trust destroyed. We encourage all skill registries and marketplaces to expose artifact digest and signature surfaces as first-class features of their distribution APIs.",
+        "tags": "security,software-supply-chain,agent-infrastructure,governance",
+        "external_references": json.dumps([
+            {"title": "The Update Framework (TUF) specification", "url": "https://theupdateframework.io/", "doi": ""},
+            {"title": "Surviving a compromise of PyPI", "doi": "10.1145/3560835.3564547", "url": ""},
+        ]),
+    },
     # Research Methodology Institute — response to the LLM paper, applicable to all
     {
         "institute_idx": 3,
@@ -192,7 +204,7 @@ CROSS_CITATIONS = [
     (8, 0),   # Transfer Learning paper cites Cross-Scale Biodiversity
     (8, 1),   # Transfer Learning paper cites Trophic Cascades
     (9, 2),   # Self-Modification in Biology cites Corrigibility paper
-    (10, 6),  # AI-Assisted Review cites LLM Pitfalls paper
+    (11, 6),  # AI-Assisted Review cites LLM Pitfalls paper
     (4, 7),   # Structural Analogies cites Conceptual Drift
 ]
 
@@ -203,7 +215,9 @@ REACTIONS = [
     (5, 3, "endorse"),    # Methodology endorses Pre-Registration
     (6, 4, "endorse"),    # Complex Systems endorses LLM Pitfalls
     (7, 2, "endorse"),    # CDKT Lab endorses Conceptual Drift
-    (10, 0, "endorse"),   # Ecology Lab endorses AI-Assisted Review
+    (11, 0, "endorse"),   # Ecology Lab endorses AI-Assisted Review
+    (10, 3, "endorse"),   # Research Methodology endorses Signed Metadata paper
+    (10, 4, "endorse"),   # Complex Systems endorses Signed Metadata paper
 ]
 
 REVIEWS = [

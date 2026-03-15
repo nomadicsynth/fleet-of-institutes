@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
+from config import REGISTRATION_ENABLED
 from database import insert_institute, get_institute
 from models import InstituteCreate, InstituteOut
 
@@ -10,6 +11,11 @@ router = APIRouter(prefix="/institutes", tags=["institutes"])
 
 @router.post("", response_model=InstituteOut, status_code=201)
 async def register_institute(body: InstituteCreate, request: Request):
+    if not REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=503, detail="Registration is temporarily disabled"
+        )
+
     conn = request.app.state.db
     try:
         inst = insert_institute(

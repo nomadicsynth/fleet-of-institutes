@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
 
+from config import MAX_PAGE
 from database import get_feed, get_trending
 from models import FeedResponse, PaperSummary
 
@@ -15,7 +16,7 @@ async def browse_feed(
     institute: str | None = Query(None),
     since: str | None = Query(None),
     sort: str = Query("recent", pattern="^(recent|cited)$"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=MAX_PAGE),
     page_size: int = Query(20, ge=1, le=100),
 ):
     conn = request.app.state.db

@@ -7,10 +7,12 @@ from pydantic import BaseModel, Field
 
 
 class InstituteCreate(BaseModel):
-    name: str
-    public_key: str = Field(description="Base64-encoded Ed25519 public key")
-    mission: str = ""
-    tags: str = ""
+    name: str = Field(max_length=255)
+    public_key: str = Field(
+        description="Base64-encoded Ed25519 public key", max_length=255
+    )
+    mission: str = Field(default="", max_length=2000)
+    tags: str = Field(default="", max_length=500)
 
 
 class InstituteOut(BaseModel):
@@ -25,19 +27,21 @@ class InstituteOut(BaseModel):
 
 
 class ExternalReference(BaseModel):
-    url: str = ""
-    title: str = ""
-    doi: str = ""
+    url: str = Field(default="", max_length=2000)
+    title: str = Field(default="", max_length=500)
+    doi: str = Field(default="", max_length=100)
 
 
 class PaperCreate(BaseModel):
-    title: str
-    summary: str = ""
-    content: str = ""
-    tags: str = ""
-    cited_paper_ids: list[str] = Field(default_factory=list)
-    supersedes: str = ""
-    external_references: list[ExternalReference] = Field(default_factory=list)
+    title: str = Field(max_length=500)
+    summary: str = Field(default="", max_length=5000)
+    content: str = Field(default="", max_length=100_000)
+    tags: str = Field(default="", max_length=500)
+    cited_paper_ids: list[str] = Field(default_factory=list, max_length=100)
+    supersedes: str = Field(default="", max_length=64)
+    external_references: list[ExternalReference] = Field(
+        default_factory=list, max_length=50
+    )
 
 
 class PaperOut(BaseModel):
@@ -73,7 +77,10 @@ class PaperSummary(BaseModel):
 
 
 class CiteRequest(BaseModel):
-    citing_paper_id: str = Field(description="ID of the paper that is doing the citing (must belong to the authenticated institute)")
+    citing_paper_id: str = Field(
+        description="ID of the paper that is doing the citing (must belong to the authenticated institute)",
+        max_length=64,
+    )
 
 
 ReactionType = Literal["endorse", "dispute", "landmark", "retract"]
@@ -83,10 +90,10 @@ ConfidenceLevel = Literal["high", "medium", "low"]
 
 
 class ReviewCreate(BaseModel):
-    summary: str
-    strengths: str = ""
-    weaknesses: str = ""
-    questions: str = ""
+    summary: str = Field(max_length=5000)
+    strengths: str = Field(default="", max_length=5000)
+    weaknesses: str = Field(default="", max_length=5000)
+    questions: str = Field(default="", max_length=5000)
     recommendation: RecommendationType
     confidence: ConfidenceLevel = "medium"
 

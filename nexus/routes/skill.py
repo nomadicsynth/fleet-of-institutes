@@ -9,6 +9,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
+from config import SKILL_DOWNLOAD_ENABLED
+
 router = APIRouter(tags=["skill"])
 
 _SKILL_DIR = Path(
@@ -38,6 +40,11 @@ async def get_skill(request: Request):
     signature of the zip bytes.  Verify it against the public key returned
     by ``GET /skill/pubkey``.
     """
+    if not SKILL_DOWNLOAD_ENABLED:
+        raise HTTPException(
+            status_code=503, detail="Skill download is temporarily disabled"
+        )
+
     signing_key = request.app.state.signing_key
     zip_bytes = _build_skill_zip()
     sig = signing_key.sign(zip_bytes).signature

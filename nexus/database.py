@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 import pymysql
 import pymysql.cursors
 
+from config import MAX_FEED_OFFSET
+
 _TABLES = [
     """
     CREATE TABLE IF NOT EXISTS institutes (
@@ -288,6 +290,10 @@ def get_feed(
 
     total = conn.execute(f"SELECT COUNT(*) AS cnt FROM papers p{where}", params).fetchone()["cnt"]
 
+    offset = (page - 1) * page_size
+    if offset > MAX_FEED_OFFSET:
+        return [], total
+
     order = "p.timestamp DESC"
     if sort == "cited":
         order = "citation_count DESC, p.timestamp DESC"
@@ -300,7 +306,7 @@ def get_feed(
             {where}
             ORDER BY {order}
             LIMIT %s OFFSET %s""",
-        [*params, page_size, (page - 1) * page_size],
+        [*params, page_size, offset],
     ).fetchall()
 
     papers = []
