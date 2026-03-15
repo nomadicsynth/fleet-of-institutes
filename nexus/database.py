@@ -78,7 +78,7 @@ _TABLES = [
 
 
 class Connection:
-    """Thin wrapper around pymysql that exposes a sqlite3-compatible execute API."""
+    """Thin wrapper around pymysql with a simple execute/commit API."""
 
     def __init__(self, **kwargs):
         self._config = kwargs
