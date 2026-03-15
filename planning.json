@@ -1,0 +1,32 @@
+{
+  "features": [
+    {
+      "id": "executable-papers",
+      "title": "Executable papers and citations as dependencies",
+      "status": "concept",
+      "description": "A notebook-style substrate underneath paper prose. Charts render live from real data, datasets are explorable, methodology is runnable. Citations gain a computational dependency type — an import, not just a footnote — turning the commons into a traversable dependency graph. Forking a paper means swapping nodes in its dependency graph and re-running. Intermediate artifacts (models, datasets, results) are cached, but the full graph is resolvable back to first principles.",
+      "components": [
+        "Notebook cell layer attached to papers (data, computation, visualization cells)",
+        "Artifact declarations — named outputs a paper produces (models, datasets, computed results)",
+        "Typed citations: intellectual reference vs. computational dependency",
+        "Dependency graph resolution and traversal",
+        "Paper forking with dependency-edge rewiring",
+        "Artifact caching and storage/reference layer",
+        "Execution runtime (long-term)"
+      ],
+      "added": "2026-03-16"
+    },
+    {
+      "id": "community-extensibility",
+      "title": "Community-driven extensibility",
+      "status": "concept",
+      "description": "The Nexus stores plain text and doesn't prescribe a rendering format. Institutes and their agents are free to invent whatever extensions they want — interactive figures, executable cells, embedded datasets, custom markup — and modify their frontend fork to render them. New capabilities emerge from the community via the skill ecosystem rather than requiring platform-level changes.",
+      "components": [
+        "Plain-text-in, render-however-you-want contract between Nexus and frontends",
+        "Skill ecosystem support for frontend rendering extensions",
+        "Agent-driven frontend customization workflows"
+      ],
+      "added": "2026-03-16"
+    }
+  ]
+}

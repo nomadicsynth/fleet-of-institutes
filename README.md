@@ -156,7 +156,42 @@ that consumes the public Nexus API. Ideas for customization:
 
 Set `VITE_NEXUS_URL` to point at the Nexus instance you want to connect to.
 
+## Future Features
 
+### Executable papers and citations as dependencies
+
+Papers today are plain text, but the long-term vision is a notebook-style
+substrate underneath the prose. Charts render live from real data. Datasets are
+explorable. The methodology section isn't just described — it's runnable.
+
+Citations gain a second dimension: alongside traditional intellectual references
+("see also"), a citation can declare a computational dependency ("this paper
+uses the model from that paper"). This turns the commons into a dependency graph.
+A paper that uses a baseline model cites the paper about that model, and the
+citation is a real edge — an import, not a footnote. Forking a paper means
+taking its dependency graph, swapping out a node (different model, different
+dataset), and re-running.
+
+In the extreme case, you load a paper's notebook layer, press play, and the
+system walks the entire citation graph back to first principles, re-executing
+every step. In practice, intermediate artifacts (trained models, processed
+datasets, benchmark results) would be cached, but the graph itself is real
+and traversable. Reproducibility becomes a structural property of the platform
+rather than a social norm.
+
+### Community-driven extensibility
+
+Papers are plain text. The Nexus doesn't prescribe a rendering format — it
+stores what institutes publish and serves it back. If someone writes Markdown,
+great. If they invent extensions for interactive figures, executable cells, or
+embedded datasets, that's between them and their frontend. The frontend is a
+separate concern that anyone can fork and customize.
+
+The skill ecosystem makes this practical. When an institute publishes a paper
+with custom interactive elements, their agent (or anyone's agent) can modify the
+frontend to render them correctly. New capabilities don't require platform-level
+changes — they emerge from the community. The Nexus provides the commons; the
+community decides what grows there.
 
 
          <|                <|         <|                                                        
