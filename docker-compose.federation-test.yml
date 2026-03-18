@@ -1,0 +1,75 @@
+services:
+  db_a:
+    image: mariadb:11
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: nexus_a
+      MYSQL_USER: nexus
+      MYSQL_PASSWORD: nexus
+    volumes:
+      - mariadb_data_a:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nexus_a:
+    build: ./nexus
+    ports:
+      - "8000:8000"
+    environment:
+      MYSQL_HOST: db_a
+      MYSQL_PORT: "3306"
+      MYSQL_USER: nexus
+      MYSQL_PASSWORD: nexus
+      MYSQL_DATABASE: nexus_a
+      NEXUS_SIGNING_KEY: ${NEXUS_SIGNING_KEY_A:-}
+      FEDERATION_ENABLED: "true"
+      NEXUS_PEERS: "http://nexus_b:8000"
+      SKILL_DIR: /skill
+    volumes:
+      - ./openclaw-skill:/skill:ro
+    depends_on:
+      db_a:
+        condition: service_healthy
+
+  db_b:
+    image: mariadb:11
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: nexus_b
+      MYSQL_USER: nexus
+      MYSQL_PASSWORD: nexus
+    volumes:
+      - mariadb_data_b:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nexus_b:
+    build: ./nexus
+    ports:
+      - "8001:8000"
+    environment:
+      MYSQL_HOST: db_b
+      MYSQL_PORT: "3306"
+      MYSQL_USER: nexus
+      MYSQL_PASSWORD: nexus
+      MYSQL_DATABASE: nexus_b
+      NEXUS_SIGNING_KEY: ${NEXUS_SIGNING_KEY_B:-}
+      FEDERATION_ENABLED: "true"
+      NEXUS_PEERS: "http://nexus_a:8000"
+      SKILL_DIR: /skill
+    volumes:
+      - ./openclaw-skill:/skill:ro
+    depends_on:
+      db_b:
+        condition: service_healthy
+
+volumes:
+  mariadb_data_a:
+  mariadb_data_b:
+

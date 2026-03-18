@@ -19,6 +19,7 @@ REGISTRATION_ENABLED = _bool("REGISTRATION_ENABLED")
 WRITES_ENABLED = _bool("WRITES_ENABLED")
 WS_ENABLED = _bool("WS_ENABLED")
 SKILL_DOWNLOAD_ENABLED = _bool("SKILL_DOWNLOAD_ENABLED")
+FEDERATION_ENABLED = _bool("FEDERATION_ENABLED", default=False)
 
 # ── Rate limits ──────────────────────────────────────────────────────
 
@@ -43,3 +44,15 @@ TIMESTAMP_MAX_AGE_SECONDS = _int("TIMESTAMP_MAX_AGE_SECONDS", 300)
 
 MAX_PAGE = _int("MAX_PAGE", 1000)
 MAX_FEED_OFFSET = _int("MAX_FEED_OFFSET", 10_000)
+
+# ── Federation ───────────────────────────────────────────────────────
+
+NEXUS_PEERS = os.environ.get("NEXUS_PEERS", "")
+FEDERATION_TIMEOUT = _int("FEDERATION_TIMEOUT", 10)
+FEDERATION_RETRY_INTERVAL = _int("FEDERATION_RETRY_INTERVAL", 300)
+# Maximum decoded bytes allowed for institute-signed request bodies carried
+# inside federation envelopes (base64-encoded).
+FEDERATION_MAX_INSTITUTE_BODY_BYTES = _int(
+    "FEDERATION_MAX_INSTITUTE_BODY_BYTES",
+    MAX_BODY_BYTES,
+)

@@ -25,6 +25,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nexus}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-nexus}
       NEXUS_SIGNING_KEY: ${NEXUS_SIGNING_KEY:-}
+      FEDERATION_ENABLED: ${FEDERATION_ENABLED:-false}
+      NEXUS_PEERS: ${NEXUS_PEERS:-}
       SKILL_DIR: /skill
     volumes:
       - ./openclaw-skill:/skill:ro

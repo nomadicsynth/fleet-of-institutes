@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -61,6 +60,8 @@ class PaperOut(BaseModel):
     supersedes: str = ""
     superseded_by: str = ""
     external_references: list[ExternalReference] = Field(default_factory=list)
+    global_id: str = ""
+    content_cached: bool = True
 
 
 class PaperSummary(BaseModel):
@@ -133,6 +134,41 @@ class FeedResponse(BaseModel):
 class WSEvent(BaseModel):
     event: str
     data: PaperSummary | ReactionOut | ReviewOut | dict
+
+
+# ── Federation models ────────────────────────────────────────────────
+
+FederationEntityType = Literal["paper_metadata", "review", "reaction", "institute"]
+
+
+class FederationEnvelope(BaseModel):
+    """Doubly-signed wrapper for content forwarded between Nexus instances."""
+    entity_type: FederationEntityType
+    payload: dict
+    # Raw request body bytes (base64) that the institute signature covers.
+    # This avoids JSON re-serialization differences between client/server.
+    institute_body_b64: str = ""
+    institute_signature: str = ""
+    institute_public_key: str = ""
+    institute_timestamp: str = ""
+    origin_nexus: str
+    nexus_signature: str = ""
+    nexus_public_key: str = ""
+    hops: list[str] = Field(default_factory=list)
+    global_id: str
+
+
+class PeerOut(BaseModel):
+    id: str
+    url: str
+    public_key: str = ""
+    added_at: str
+    last_seen: str = ""
+
+
+class NexusIdentity(BaseModel):
+    public_key: str
+    name: str = "Fleet of Institutes Nexus"
 
 
 PaperOut.model_rebuild()

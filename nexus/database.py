@@ -21,6 +21,7 @@ _TABLES = [
         tags          VARCHAR(500) NOT NULL DEFAULT '',
         avatar_seed   VARCHAR(64) NOT NULL DEFAULT '',
         registered_at VARCHAR(64) NOT NULL,
+        origin_nexus  VARCHAR(255) NOT NULL DEFAULT '',
         UNIQUE KEY uq_pubkey (public_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
@@ -35,6 +36,10 @@ _TABLES = [
         timestamp            VARCHAR(64) NOT NULL,
         supersedes           VARCHAR(64) NOT NULL DEFAULT '',
         external_references  TEXT NOT NULL,
+        global_id            VARCHAR(128) NOT NULL DEFAULT '',
+        content_cached       TINYINT(1) NOT NULL DEFAULT 1,
+        origin_nexus         VARCHAR(255) NOT NULL DEFAULT '',
+        UNIQUE KEY uq_global_id (global_id),
         FOREIGN KEY (institute_id) REFERENCES institutes(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
@@ -74,6 +79,27 @@ _TABLES = [
         UNIQUE KEY uq_review (paper_id, institute_id),
         FOREIGN KEY (paper_id) REFERENCES papers(id),
         FOREIGN KEY (institute_id) REFERENCES institutes(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS peers (
+        id         VARCHAR(64) PRIMARY KEY,
+        url        VARCHAR(500) NOT NULL,
+        public_key VARCHAR(255) NOT NULL DEFAULT '',
+        added_at   VARCHAR(64) NOT NULL,
+        last_seen  VARCHAR(64) NOT NULL DEFAULT '',
+        UNIQUE KEY uq_url (url)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS federation_log (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        peer_id     VARCHAR(64) NOT NULL,
+        global_id   VARCHAR(128) NOT NULL,
+        entity_type VARCHAR(32) NOT NULL,
+        status      VARCHAR(16) NOT NULL DEFAULT 'pending',
+        created_at  VARCHAR(64) NOT NULL,
+        UNIQUE KEY uq_delivery (peer_id, global_id, entity_type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
 ]
@@ -120,23 +146,20 @@ def init_db(conn: Connection) -> None:
     conn.commit()
 
 
-def generate_arxiv_id(conn: Connection) -> str:
-    """Generate arXiv-style hex IDs like 2603.001a."""
+# ── Paper ID generation ─────────────────────────────────────────────
+
+def compute_global_id(public_key: str, title: str, content: str, timestamp: str) -> str:
+    """SHA-256 hash of canonical paper content. Deterministic across Nexuses."""
+    payload = f"{public_key}\n{title}\n{content}\n{timestamp}"
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def generate_paper_id(global_id: str) -> str:
+    """Human-readable ID: YYMM.<first 8 hex chars of global_id>."""
     now = datetime.now(timezone.utc)
-    prefix = f"{now.year % 100:02d}{now.month:02d}."
-
-    row = conn.execute(
-        "SELECT id FROM papers WHERE id LIKE %s ORDER BY id DESC LIMIT 1",
-        (prefix + "%",),
-    ).fetchone()
-
-    if row:
-        last_num = int(row["id"].split(".")[-1], 16)
-        new_num = last_num + 1
-    else:
-        new_num = 1
-
-    return f"{prefix}{new_num:04x}"
+    prefix = f"{now.year % 100:02d}{now.month:02d}"
+    short_hash = global_id[:8]
+    return f"{prefix}.{short_hash}"
 
 
 def make_avatar_seed(name: str) -> str:
@@ -154,13 +177,16 @@ def insert_institute(
     *,
     institute_id: str | None = None,
     registered_at: str | None = None,
+    origin_nexus: str = "",
 ) -> dict:
     iid = institute_id or uuid.uuid4().hex
     avatar_seed = make_avatar_seed(name)
     ts = registered_at or datetime.now(timezone.utc).isoformat()
     conn.execute(
-        "INSERT INTO institutes (id, name, public_key, mission, tags, avatar_seed, registered_at) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-        (iid, name, public_key, mission, tags, avatar_seed, ts),
+        """INSERT INTO institutes
+           (id, name, public_key, mission, tags, avatar_seed, registered_at, origin_nexus)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (iid, name, public_key, mission, tags, avatar_seed, ts, origin_nexus),
     )
     conn.commit()
     return get_institute(conn, iid)
@@ -205,14 +231,27 @@ def insert_paper(
     timestamp: str | None = None,
     supersedes: str = "",
     external_references: str = "",
+    global_id: str = "",
+    content_cached: bool = True,
+    origin_nexus: str = "",
 ) -> dict:
-    pid = paper_id or generate_arxiv_id(conn)
     ts = timestamp or datetime.now(timezone.utc).isoformat()
+
+    if not global_id:
+        inst = get_institute(conn, institute_id)
+        pub_key = inst["public_key"] if inst else ""
+        global_id = compute_global_id(pub_key, title, content, ts)
+
+    pid = paper_id or generate_paper_id(global_id)
+
     conn.execute(
         """INSERT INTO papers
-           (id, institute_id, title, summary, content, tags, timestamp, supersedes, external_references)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-        (pid, institute_id, title, summary, content, tags, ts, supersedes, external_references),
+           (id, institute_id, title, summary, content, tags, timestamp,
+            supersedes, external_references, global_id, content_cached, origin_nexus)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (pid, institute_id, title, summary, content, tags, ts,
+         supersedes, external_references, global_id,
+         1 if content_cached else 0, origin_nexus),
     )
     for cited_id in cited_paper_ids or []:
         conn.execute(
@@ -260,7 +299,26 @@ def get_paper(conn: Connection, paper_id: str) -> dict | None:
     ).fetchone()
     d["superseded_by"] = superseded_row["id"] if superseded_row else ""
 
+    d["content_cached"] = bool(d.get("content_cached", 1))
+
     return d
+
+
+def get_paper_by_global_id(conn: Connection, global_id: str) -> dict | None:
+    """Look up a paper by its canonical content hash."""
+    row = conn.execute("SELECT id FROM papers WHERE global_id = %s", (global_id,)).fetchone()
+    if not row:
+        return None
+    return get_paper(conn, row["id"])
+
+
+def mark_paper_cached(conn: Connection, paper_id: str, content: str) -> None:
+    """Fill in full content for a previously metadata-only stub."""
+    conn.execute(
+        "UPDATE papers SET content = %s, content_cached = 1 WHERE id = %s",
+        (content, paper_id),
+    )
+    conn.commit()
 
 
 def get_feed(
@@ -450,3 +508,97 @@ def add_reaction(
         "reaction_type": reaction_type,
         "created_at": ts,
     }
+
+
+# ── Peer queries ────────────────────────────────────────────────────
+
+def insert_peer(
+    conn: Connection,
+    url: str,
+    public_key: str = "",
+    *,
+    peer_id: str | None = None,
+) -> dict:
+    pid = peer_id or uuid.uuid4().hex
+    ts = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT IGNORE INTO peers (id, url, public_key, added_at) VALUES (%s,%s,%s,%s)",
+        (pid, url.rstrip("/"), public_key, ts),
+    )
+    conn.commit()
+    return {"id": pid, "url": url.rstrip("/"), "public_key": public_key, "added_at": ts, "last_seen": ""}
+
+
+def get_peers(conn: Connection) -> list[dict]:
+    rows = conn.execute("SELECT * FROM peers ORDER BY added_at").fetchall()
+    return [dict(r) for r in rows]
+
+
+def remove_peer(conn: Connection, peer_id: str) -> bool:
+    cursor = conn.execute("DELETE FROM peers WHERE id = %s", (peer_id,))
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def update_peer_last_seen(conn: Connection, peer_id: str) -> None:
+    ts = datetime.now(timezone.utc).isoformat()
+    conn.execute("UPDATE peers SET last_seen = %s WHERE id = %s", (ts, peer_id))
+    conn.commit()
+
+
+def update_peer_public_key(conn: Connection, peer_id: str, public_key: str) -> None:
+    conn.execute("UPDATE peers SET public_key = %s WHERE id = %s", (public_key, peer_id))
+    conn.commit()
+
+
+def get_peer_by_url(conn: Connection, url: str) -> dict | None:
+    row = conn.execute("SELECT * FROM peers WHERE url = %s", (url.rstrip("/"),)).fetchone()
+    return dict(row) if row else None
+
+
+# ── Federation log queries ──────────────────────────────────────────
+
+def log_federation_delivery(
+    conn: Connection,
+    peer_id: str,
+    global_id: str,
+    entity_type: str,
+    status: str = "pending",
+) -> None:
+    ts = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        """INSERT INTO federation_log (peer_id, global_id, entity_type, status, created_at)
+           VALUES (%s,%s,%s,%s,%s)
+           ON DUPLICATE KEY UPDATE status = %s""",
+        (peer_id, global_id, entity_type, status, ts, status),
+    )
+    conn.commit()
+
+
+def get_failed_deliveries(conn: Connection, limit: int = 100) -> list[dict]:
+    rows = conn.execute(
+        """SELECT fl.*, p.url AS peer_url FROM federation_log fl
+           JOIN peers p ON fl.peer_id = p.id
+           WHERE fl.status = 'failed'
+           ORDER BY fl.created_at
+           LIMIT %s""",
+        (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_papers_since(conn: Connection, since: str, limit: int = 100) -> list[dict]:
+    """Return paper metadata (no content) for federation sync."""
+    rows = conn.execute(
+        """SELECT p.id, p.institute_id, p.title, p.summary, p.tags,
+                  p.timestamp, p.supersedes, p.external_references,
+                  p.global_id, p.origin_nexus, i.name AS institute_name,
+                  i.public_key AS institute_public_key
+           FROM papers p
+           JOIN institutes i ON p.institute_id = i.id
+           WHERE p.timestamp >= %s
+           ORDER BY p.timestamp
+           LIMIT %s""",
+        (since, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]

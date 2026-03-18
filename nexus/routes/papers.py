@@ -1,10 +1,31 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+import base64
+import json as _json
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Request
 
 from auth import require_signed
-from database import insert_paper, get_paper, add_citation, add_reaction, insert_review, get_reviews_for_paper
-from models import PaperCreate, PaperOut, CiteRequest, ReactRequest, ReactionOut, ReviewCreate, ReviewOut
+from config import FEDERATION_ENABLED
+from database import (
+    insert_paper,
+    get_paper,
+    add_citation,
+    add_reaction,
+    insert_review,
+    get_reviews_for_paper,
+    compute_global_id,
+)
+from models import (
+    PaperCreate,
+    PaperOut,
+    CiteRequest,
+    ReactRequest,
+    ReactionOut,
+    ReviewCreate,
+    ReviewOut,
+    PaperSummary,
+)
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -15,6 +36,13 @@ async def read_paper(paper_id: str, request: Request):
     paper = get_paper(conn, paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
+
+    if not paper.get("content_cached", True) and FEDERATION_ENABLED:
+        from federation import fetch_paper_content
+        fetched = await fetch_paper_content(conn, paper)
+        if fetched:
+            paper = fetched
+
     return paper
 
 
@@ -22,7 +50,11 @@ async def read_paper(paper_id: str, request: Request):
 async def publish_paper(
     body: PaperCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     institute: dict = Depends(require_signed),
+    x_signature: str = Header(""),
+    x_public_key: str = Header(""),
+    x_timestamp: str = Header(""),
 ):
     conn = request.app.state.db
 
@@ -33,8 +65,14 @@ async def publish_paper(
         if prev["institute_id"] != institute["id"]:
             raise HTTPException(status_code=403, detail="Can only supersede your own papers")
 
-    import json as _json
     ext_refs = _json.dumps([r.model_dump() for r in body.external_references]) if body.external_references else ""
+
+    global_id = compute_global_id(
+        institute.get("public_key", ""),
+        body.title,
+        body.content,
+        "",
+    )
 
     paper = insert_paper(
         conn,
@@ -46,10 +84,10 @@ async def publish_paper(
         cited_paper_ids=body.cited_paper_ids,
         supersedes=body.supersedes,
         external_references=ext_refs,
+        global_id=global_id,
     )
 
     from routes.ws import broadcast
-    from models import PaperSummary
     await broadcast("new_paper", PaperSummary(
         id=paper["id"],
         institute_id=paper["institute_id"],
@@ -62,6 +100,18 @@ async def publish_paper(
         reaction_counts={},
         review_counts={},
     ).model_dump())
+
+    if FEDERATION_ENABLED:
+        from federation import build_paper_metadata_envelope, forward_to_peers
+        nexus_id = request.app.state.nexus_id
+        signing_key = request.app.state.signing_key
+        body_bytes = await request.body()
+        institute_body_b64 = base64.b64encode(body_bytes).decode()
+        envelope = build_paper_metadata_envelope(
+            paper, x_public_key, x_signature, x_timestamp, nexus_id,
+            institute_body_b64=institute_body_b64,
+        )
+        background_tasks.add_task(forward_to_peers, conn, envelope, signing_key)
 
     return paper
 
@@ -94,7 +144,11 @@ async def react_to_paper(
     paper_id: str,
     body: ReactRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     institute: dict = Depends(require_signed),
+    x_signature: str = Header(""),
+    x_public_key: str = Header(""),
+    x_timestamp: str = Header(""),
 ):
     conn = request.app.state.db
 
@@ -107,6 +161,19 @@ async def react_to_paper(
     from routes.ws import broadcast
     await broadcast("reaction", {**reaction, "paper_id": paper_id})
 
+    if FEDERATION_ENABLED:
+        from federation import build_reaction_envelope, forward_to_peers
+        nexus_id = request.app.state.nexus_id
+        signing_key = request.app.state.signing_key
+        body_bytes = await request.body()
+        institute_body_b64 = base64.b64encode(body_bytes).decode()
+        envelope = build_reaction_envelope(
+            reaction, paper_id, paper.get("global_id", ""),
+            x_public_key, x_signature, x_timestamp, nexus_id,
+            institute_body_b64=institute_body_b64,
+        )
+        background_tasks.add_task(forward_to_peers, conn, envelope, signing_key)
+
     return reaction
 
 
@@ -115,7 +182,11 @@ async def submit_review(
     paper_id: str,
     body: ReviewCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     institute: dict = Depends(require_signed),
+    x_signature: str = Header(""),
+    x_public_key: str = Header(""),
+    x_timestamp: str = Header(""),
 ):
     conn = request.app.state.db
 
@@ -138,6 +209,19 @@ async def submit_review(
 
     from routes.ws import broadcast
     await broadcast("new_review", {**review, "paper_id": paper_id})
+
+    if FEDERATION_ENABLED:
+        from federation import build_review_envelope, forward_to_peers
+        nexus_id = request.app.state.nexus_id
+        signing_key = request.app.state.signing_key
+        body_bytes = await request.body()
+        institute_body_b64 = base64.b64encode(body_bytes).decode()
+        envelope = build_review_envelope(
+            review, paper.get("global_id", ""),
+            x_public_key, x_signature, x_timestamp, nexus_id,
+            institute_body_b64=institute_body_b64,
+        )
+        background_tasks.add_task(forward_to_peers, conn, envelope, signing_key)
 
     return review
 
