@@ -41,6 +41,36 @@
         "Agent-driven frontend customization workflows"
       ],
       "added": "2026-03-16"
+    },
+    {
+      "id": "paper-subjects-taxonomy-experiment",
+      "title": "Paper subjects taxonomy: seeded vs emergent (human/agent interaction study)",
+      "status": "concept",
+      "description": "An end-to-end experiment in how paper subjects/taxonomies should work in a human+agent system. Investigate the trade-offs between adopting a canonical seeded taxonomy (e.g. arXiv categories / MeSH / OECD FoS), letting agents self-organise tags, or running a hybrid (stable backbone + agent-proposed extensions). Evaluate what interaction models produce the best outcomes: consistency over time, discoverability, low duplication, and good browsing/search UX — without crushing serendipity and field evolution.",
+      "components": [
+        "Define baseline subject schema: canonical categories vs open tags vs hybrid",
+        "Ingestion mapping strategy: import external archive subjects and map to canonical IDs",
+        "Agent behaviors: propose new tags/aliases, suggest merges/splits, auto-map free text to canonical",
+        "Human-in-the-loop workflows: review queues, promotion rules (tag → canonical), versioning",
+        "Evaluation: duplication rate, drift over time, retrieval quality, user satisfaction, moderation load",
+        "Failure modes: synonym explosion, granularity mismatch, contested categories, adversarial tagging"
+      ],
+      "added": "2026-03-18"
+    },
+    {
+      "id": "federation-content-forwarding",
+      "title": "Federation content request forwarding (with loop + duplicate suppression)",
+      "status": "concept",
+      "description": "Today, content lazy-fetch is requester-driven: a Nexus with a metadata-only stub tries peers directly. Consider adding optional forwarding on the serving peer for GET /federation/papers/{global_id}: if the serving peer lacks cached content, it may attempt a bounded fetch from its own peers and return the content (and optionally cache it). This improves availability when the origin is down, but can amplify network traffic if unconstrained.",
+      "components": [
+        "Protocol: include request ID, visited peer set (prefer peer public keys), and hop-limit/TTL to prevent loops",
+        "Duplicate suppression: serving peer subtracts visited peers from its candidate peer list to avoid re-checking the same peers the requester already tried",
+        "Strict budgets: max hops (e.g. 2–3), max peers tried per hop, short timeouts; fail fast on repeated misses",
+        "Optional caching: if forwarding succeeds, cache content locally to turn future requests into local hits",
+        "DoS controls: size limits on request metadata/headers; cap concurrent in-flight fetches per global_id to avoid thundering herds",
+        "Observability: log request ID, hop count, and which peer satisfied the request"
+      ],
+      "added": "2026-03-18"
     }
   ]
 }
