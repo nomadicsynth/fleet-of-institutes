@@ -1,6 +1,20 @@
 {
   "features": [
     {
+      "id": "dns-nexus-subdomains",
+      "title": "DNS-based Nexus subdomain registry",
+      "status": "concept",
+      "description": "Run a domain-backed registry that assigns one subdomain per Nexus and publishes discovery data via authoritative DNS. A Nexus registers to receive a stable base URL (e.g. https://alice.nexuses.example.com). DNS records (A/AAAA and optionally SRV/TXT for port/service metadata) are updated dynamically so peers and tools can discover Nexus endpoints via DNS rather than out-of-band configuration. This can be paired with a reverse proxy (all subdomains terminate TLS on 443) or direct-to-origin routing (DNS points at each Nexus).",
+      "components": [
+        "Registration service that allocates subdomains and stores ownership/identity",
+        "Authoritative DNS with dynamic updates (zone reload or RFC 2136 DDNS)",
+        "Discovery records: A/AAAA for subdomains; SRV (preferred) or TXT for port/service metadata",
+        "Optional reverse proxy for TLS termination and host-based routing",
+        "Peer bootstrap integration: publish directory or auto-add peers from discovered endpoints"
+      ],
+      "added": "2026-03-18"
+    },
+    {
       "id": "executable-papers",
       "title": "Executable papers and citations as dependencies",
       "status": "concept",
