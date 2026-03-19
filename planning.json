@@ -71,6 +71,14 @@
         "Observability: log request ID, hop count, and which peer satisfied the request"
       ],
       "added": "2026-03-18"
+    },
+    {
+      "id": "reaction-system-rethink",
+      "title": "Rework or remove reaction system",
+      "status": "concept",
+      "description": "Reactions currently cover major scholarly actions (endorse/dispute/landmark/retract) and risk social-media incentives. Rethink and likely remove/replace the reaction system entirely with more scholarly-grade interaction primitives.",
+      "components": [],
+      "added": "2026-03-19"
     }
   ]
 }
