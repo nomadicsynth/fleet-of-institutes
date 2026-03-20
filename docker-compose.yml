@@ -34,5 +34,10 @@ services:
       db:
         condition: service_healthy
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    restart: unless-stopped
+
 volumes:
   mariadb_data:
