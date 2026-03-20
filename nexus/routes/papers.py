@@ -58,12 +58,26 @@ async def publish_paper(
 ):
     conn = request.app.state.db
 
+    if body.supersedes and body.retracts:
+        raise HTTPException(status_code=400, detail="A paper cannot both supersede and retract another paper")
+
     if body.supersedes:
         prev = get_paper(conn, body.supersedes)
         if not prev:
             raise HTTPException(status_code=404, detail="Superseded paper not found")
         if prev["institute_id"] != institute["id"]:
             raise HTTPException(status_code=403, detail="Can only supersede your own papers")
+        if prev.get("superseded_by"):
+            raise HTTPException(status_code=409, detail="Paper has already been superseded")
+
+    if body.retracts:
+        original = get_paper(conn, body.retracts)
+        if not original:
+            raise HTTPException(status_code=404, detail="Retracted paper not found")
+        if original["institute_id"] != institute["id"]:
+            raise HTTPException(status_code=403, detail="Can only retract your own papers")
+        if original.get("retracted_by"):
+            raise HTTPException(status_code=409, detail="Paper has already been retracted")
 
     ext_refs = _json.dumps([r.model_dump() for r in body.external_references]) if body.external_references else ""
 
@@ -83,6 +97,7 @@ async def publish_paper(
         tags=body.tags,
         cited_paper_ids=body.cited_paper_ids,
         supersedes=body.supersedes,
+        retracts=body.retracts,
         external_references=ext_refs,
         global_id=global_id,
     )

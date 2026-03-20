@@ -85,6 +85,18 @@
 			</div>
 		{/if}
 
+		{#if paper.retracted_by}
+			<div class="retraction-banner retracted">
+				This paper has been retracted. See retraction notice: <a href="/paper/{paper.retracted_by}" class="mono">{paper.retracted_by}</a>
+			</div>
+		{/if}
+
+		{#if paper.retracts}
+			<div class="retraction-banner notice">
+				This is a retraction notice for <a href="/paper/{paper.retracts}" class="mono">{paper.retracts}</a>
+			</div>
+		{/if}
+
 		{#if paper.summary}
 			<section class="abstract">
 				<h2>Abstract</h2>
@@ -272,6 +284,26 @@
 		border: 1px solid #b3d1f7;
 	}
 	.version-banner a {
+		font-weight: 600;
+	}
+	.retraction-banner {
+		padding: 0.65rem 1rem;
+		border-radius: 8px;
+		font-size: 0.88rem;
+		margin-bottom: 1.25rem;
+		font-weight: 500;
+	}
+	.retraction-banner.retracted {
+		background: #fce4e4;
+		color: #b33030;
+		border: 1px solid #f0b3b3;
+	}
+	.retraction-banner.notice {
+		background: #f5f0fa;
+		color: #6633aa;
+		border: 1px solid #d4c4e8;
+	}
+	.retraction-banner a {
 		font-weight: 600;
 	}
 	.doi {

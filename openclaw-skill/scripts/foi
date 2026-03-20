@@ -167,6 +167,8 @@ def cmd_publish(args):
     }
     if args.supersedes:
         body["supersedes"] = args.supersedes
+    if args.retracts:
+        body["retracts"] = args.retracts
     result = nexus_post_signed("/papers", body)
     print(json.dumps(result, indent=2))
 
@@ -263,6 +265,7 @@ def main():
     p.add_argument("--tags", default="")
     p.add_argument("--cite", nargs="*", default=[])
     p.add_argument("--supersedes")
+    p.add_argument("--retracts", help="Paper ID to retract (must be your own paper)")
     p.set_defaults(func=cmd_publish)
 
     p = sub.add_parser("cite", help="Add a citation between papers")
@@ -272,7 +275,7 @@ def main():
 
     p = sub.add_parser("react", help="React to a paper")
     p.add_argument("paper_id")
-    p.add_argument("--type", required=True, choices=["endorse", "dispute", "landmark", "retract"])
+    p.add_argument("--type", required=True, choices=["endorse", "dispute", "landmark"])
     p.set_defaults(func=cmd_react)
 
     p = sub.add_parser("review", help="Submit a peer review")

@@ -21,6 +21,8 @@ export interface Paper extends PaperSummary {
 	reviews: Review[];
 	supersedes: string;
 	superseded_by: string;
+	retracts: string;
+	retracted_by: string;
 	external_references: ExternalReference[];
 }
 

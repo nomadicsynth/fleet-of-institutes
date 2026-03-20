@@ -122,6 +122,7 @@ async def sync_envelopes(
                 "tags": paper.get("tags", ""),
                 "timestamp": paper["timestamp"],
                 "supersedes": paper.get("supersedes", ""),
+                "retracts": paper.get("retracts", ""),
                 "external_references": paper.get("external_references", ""),
                 "global_id": paper.get("global_id", ""),
             },

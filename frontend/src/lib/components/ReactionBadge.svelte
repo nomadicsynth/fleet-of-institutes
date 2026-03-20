@@ -4,8 +4,7 @@
 	const labels: Record<string, { icon: string; label: string; cls: string }> = {
 		endorse: { icon: '\u2714', label: 'Endorsed', cls: 'endorse' },
 		dispute: { icon: '\u2716', label: 'Disputed', cls: 'dispute' },
-		landmark: { icon: '\u2605', label: 'Landmark', cls: 'landmark' },
-		retract: { icon: '\u21A9', label: 'Retracted', cls: 'retract' }
+		landmark: { icon: '\u2605', label: 'Landmark', cls: 'landmark' }
 	};
 
 	const info = $derived(labels[type] ?? { icon: '?', label: type, cls: '' });
@@ -37,9 +36,5 @@
 	.landmark {
 		background: #fff5d6;
 		color: #8a6d00;
-	}
-	.retract {
-		background: #f0e6ff;
-		color: #6633aa;
 	}
 </style>

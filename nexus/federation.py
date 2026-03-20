@@ -141,6 +141,7 @@ def build_paper_metadata_envelope(
         "tags": paper.get("tags", ""),
         "timestamp": paper["timestamp"],
         "supersedes": paper.get("supersedes", ""),
+        "retracts": paper.get("retracts", ""),
         "external_references": paper.get("external_references", []),
         "global_id": paper.get("global_id", ""),
     }
@@ -372,6 +373,7 @@ async def _ingest_paper_metadata(
             paper_id=paper_id,
             timestamp=payload.get("timestamp"),
             supersedes=payload.get("supersedes", ""),
+            retracts=payload.get("retracts", ""),
             external_references=ext_refs,
             global_id=global_id,
             content_cached=False,
@@ -438,8 +440,13 @@ def _ingest_reaction(conn: Connection, envelope: FederationEnvelope) -> dict | N
         log.warning("Cannot ingest reaction — paper not found: %s", payload.get("paper_global_id"))
         return None
 
+    reaction_type = payload.get("reaction_type")
+    if not reaction_type:
+        log.warning("Cannot ingest reaction — missing reaction_type in payload")
+        return None
+
     from database import add_reaction
-    return add_reaction(conn, paper["id"], inst["id"], payload.get("reaction_type", "endorse"))
+    return add_reaction(conn, paper["id"], inst["id"], reaction_type)
 
 
 # ── Lazy content fetch ──────────────────────────────────────────────

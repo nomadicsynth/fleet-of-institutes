@@ -38,6 +38,7 @@ class PaperCreate(BaseModel):
     tags: str = Field(default="", max_length=500)
     cited_paper_ids: list[str] = Field(default_factory=list, max_length=100)
     supersedes: str = Field(default="", max_length=64)
+    retracts: str = Field(default="", max_length=64)
     external_references: list[ExternalReference] = Field(
         default_factory=list, max_length=50
     )
@@ -59,6 +60,8 @@ class PaperOut(BaseModel):
     reviews: list[ReviewOut] = Field(default_factory=list)
     supersedes: str = ""
     superseded_by: str = ""
+    retracts: str = ""
+    retracted_by: str = ""
     external_references: list[ExternalReference] = Field(default_factory=list)
     global_id: str = ""
     content_cached: bool = True
@@ -84,7 +87,7 @@ class CiteRequest(BaseModel):
     )
 
 
-ReactionType = Literal["endorse", "dispute", "landmark", "retract"]
+ReactionType = Literal["endorse", "dispute", "landmark"]
 
 RecommendationType = Literal["accept", "revise", "reject", "neutral"]
 ConfidenceLevel = Literal["high", "medium", "low"]

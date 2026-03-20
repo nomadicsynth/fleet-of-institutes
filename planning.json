@@ -79,6 +79,22 @@
       "description": "Reactions currently cover major scholarly actions (endorse/dispute/landmark/retract) and risk social-media incentives. Rethink and likely remove/replace the reaction system entirely with more scholarly-grade interaction primitives.",
       "components": [],
       "added": "2026-03-19"
+    },
+    {
+      "id": "federation-payload-validation",
+      "title": "Federation ingestion payload validation",
+      "status": "concept",
+      "description": "Federation ingest functions (_ingest_paper_metadata, _ingest_review, _ingest_reaction, _ingest_institute) accept untrusted peer payloads with minimal validation. Missing required fields silently default to empty strings or placeholder values instead of rejecting the payload. Add strict schema validation on inbound federation payloads and reject malformed envelopes rather than storing garbage data.",
+      "components": [],
+      "added": "2026-03-19"
+    },
+    {
+      "id": "api-payload-validation",
+      "title": "API-wide input validation and sanitization",
+      "status": "concept",
+      "description": "Audit all API endpoints (not just federation) for permissive payload handling. Ensure all inbound request bodies are validated against strict schemas before processing. Reject malformed or unexpected input rather than silently defaulting missing fields. Covers local publish, cite, react, review endpoints and any future additions.",
+      "components": [],
+      "added": "2026-03-19"
     }
   ]
 }

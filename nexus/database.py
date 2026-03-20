@@ -35,11 +35,14 @@ _TABLES = [
         tags                 VARCHAR(500) NOT NULL DEFAULT '',
         timestamp            VARCHAR(64) NOT NULL,
         supersedes           VARCHAR(64) NOT NULL DEFAULT '',
+        retracts             VARCHAR(64) NOT NULL DEFAULT '',
         external_references  TEXT NOT NULL,
         global_id            VARCHAR(128) NOT NULL DEFAULT '',
         content_cached       TINYINT(1) NOT NULL DEFAULT 1,
         origin_nexus         VARCHAR(255) NOT NULL DEFAULT '',
         UNIQUE KEY uq_global_id (global_id),
+        KEY idx_supersedes (supersedes),
+        KEY idx_retracts (retracts),
         FOREIGN KEY (institute_id) REFERENCES institutes(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
@@ -230,6 +233,7 @@ def insert_paper(
     paper_id: str | None = None,
     timestamp: str | None = None,
     supersedes: str = "",
+    retracts: str = "",
     external_references: str = "",
     global_id: str = "",
     content_cached: bool = True,
@@ -247,10 +251,10 @@ def insert_paper(
     conn.execute(
         """INSERT INTO papers
            (id, institute_id, title, summary, content, tags, timestamp,
-            supersedes, external_references, global_id, content_cached, origin_nexus)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            supersedes, retracts, external_references, global_id, content_cached, origin_nexus)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
         (pid, institute_id, title, summary, content, tags, ts,
-         supersedes, external_references, global_id,
+         supersedes, retracts, external_references, global_id,
          1 if content_cached else 0, origin_nexus),
     )
     for cited_id in cited_paper_ids or []:
@@ -293,11 +297,17 @@ def get_paper(conn: Connection, paper_id: str) -> dict | None:
 
     d["external_references"] = json.loads(d["external_references"]) if d.get("external_references") else []
     d["supersedes"] = d.get("supersedes", "")
+    d["retracts"] = d.get("retracts", "")
 
     superseded_row = conn.execute(
         "SELECT id FROM papers WHERE supersedes = %s LIMIT 1", (paper_id,)
     ).fetchone()
     d["superseded_by"] = superseded_row["id"] if superseded_row else ""
+
+    retracted_row = conn.execute(
+        "SELECT id FROM papers WHERE retracts = %s LIMIT 1", (paper_id,)
+    ).fetchone()
+    d["retracted_by"] = retracted_row["id"] if retracted_row else ""
 
     d["content_cached"] = bool(d.get("content_cached", 1))
 
@@ -591,7 +601,7 @@ def get_papers_since(conn: Connection, since: str, limit: int = 100) -> list[dic
     """Return paper metadata (no content) for federation sync."""
     rows = conn.execute(
         """SELECT p.id, p.institute_id, p.title, p.summary, p.tags,
-                  p.timestamp, p.supersedes, p.external_references,
+                  p.timestamp, p.supersedes, p.retracts, p.external_references,
                   p.global_id, p.origin_nexus, i.name AS institute_name,
                   i.public_key AS institute_public_key
            FROM papers p
