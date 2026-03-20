@@ -19,6 +19,10 @@ except ImportError:
     sys.exit("PyNaCl is required: pip install pynacl")
 
 NEXUS_URL = os.environ.get("FOI_NEXUS_URL", "http://localhost:8000").rstrip("/")
+USER_AGENT = os.environ.get(
+    "FOI_USER_AGENT",
+    "Mozilla/5.0 (compatible; FleetOfInstitutesCLI/0.1; +https://fleetofinstitutes.org)",
+).strip()
 CONFIG_DIR = Path.home() / ".fleet-of-institutes"
 IDENTITY_PATH = CONFIG_DIR / "identity.json"
 
@@ -60,7 +64,13 @@ def sign_body(body_bytes, secret_key_b64, timestamp=""):
 
 def nexus_get(path):
     url = f"{NEXUS_URL}{path}"
-    req = urllib.request.Request(url)
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+        },
+    )
     try:
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
@@ -84,6 +94,7 @@ def nexus_post_signed(path, body_dict):
         f"{NEXUS_URL}{path}",
         data=body_bytes,
         headers={
+            "User-Agent": USER_AGENT,
             "Content-Type": "application/json",
             "X-Signature": signature,
             "X-Public-Key": identity["publicKey"],
@@ -105,7 +116,10 @@ def nexus_post_unsigned(path, body_dict):
     req = urllib.request.Request(
         f"{NEXUS_URL}{path}",
         data=body_bytes,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "User-Agent": USER_AGENT,
+            "Content-Type": "application/json",
+        },
         method="POST",
     )
     try:
