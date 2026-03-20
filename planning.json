@@ -95,6 +95,79 @@
       "description": "Audit all API endpoints (not just federation) for permissive payload handling. Ensure all inbound request bodies are validated against strict schemas before processing. Reject malformed or unexpected input rather than silently defaulting missing fields. Covers local publish, cite, react, review endpoints and any future additions.",
       "components": [],
       "added": "2026-03-19"
+    },
+    {
+      "id": "federation-append-log-and-sync",
+      "title": "Federation append-only event log and cursor-based sync",
+      "status": "concept",
+      "description": "Replace papers-only / timestamp sync with a replayable append-only log (or outbox) per origin: envelope hash, entity type, signatures, monotonic cursor (origin_nexus + seq or hash chain). Extend /federation/sync to stream all entity types (institute, paper_metadata, review, reaction, citation events) so late joiners and reconnects can backfill without relying solely on gossip.",
+      "components": [
+        "federation_events (or outbox) table: stored envelopes or canonical fields + hash",
+        "cursor per origin",
+        "Monotonic ordering: (origin_nexus",
+        "seq) or hash-chained log per origin",
+        "Extend /federation/sync to all federated entity types",
+        "not only papers rebuilt from local rows",
+        "Replace fragile timestamp-based since cursor with seq/hash-based pagination"
+      ],
+      "added": "2026-03-20"
+    },
+    {
+      "id": "federation-idempotent-ingest-repair",
+      "title": "Idempotent federation ingest and gap repair",
+      "status": "concept",
+      "description": "Make ingest idempotent on (global_id, entity_type, and version where needed); persist dedupe keys. On peer reconnect, backfill gaps using log cursors rather than hoping gossip retries succeed. Optionally add periodic anti-entropy (e.g. Merkle roots or recent hash sets) to detect and repair missing events within a connected peer component.",
+      "components": [
+        "Idempotent ingest keys and deduplication store",
+        "Backfill protocol using per-origin sync cursors after reconnect",
+        "Optional anti-entropy: compare roots or recent hashes between peers",
+        "Improve failed-delivery handling to re-send envelope bodies where appropriate"
+      ],
+      "added": "2026-03-20"
+    },
+    {
+      "id": "federation-resolve-content-replicas",
+      "title": "Resolver API and full-text replica tracking",
+      "status": "concept",
+      "description": "Formalize lazy fetch behind stable contracts: resolve global_id to metadata, content hashes, and peer hints; fetch full text from any replica. Track replica placement and verification per object so bodies can outlive a single Nexus (arxiv-like durability).",
+      "components": [
+        "GET /resolve/{global_id} (or equivalent) returning metadata + replica hints",
+        "Optional content-addressed fetch by multihash / CID",
+        "DB fields or table for replica placement and last verified",
+        "Policy hooks: push or cache body to k peers or external blob store on publish"
+      ],
+      "added": "2026-03-20"
+    },
+    {
+      "id": "federated-catalog-indexer",
+      "title": "External federated catalog indexer (read model)",
+      "status": "concept",
+      "description": "Separate many-writer Nexuses from global discovery: a read-only crawler pulls federation sync or log APIs from many instances, materializes search/browse indexes and citation graph edges. Clients can use a Nexus for a local neighborhood view and an indexer for arxiv-scale catalog queries.",
+      "components": [
+        "Crawler or poller against /federation/sync or log export API",
+        "Index schema for papers",
+        "institutes",
+        "and graph edges",
+        "Search service (e.g. Postgres FTS",
+        "Meilisearch",
+        "OpenSearch)",
+        "Document dual-mode frontend: Nexus URL vs indexer URL"
+      ],
+      "added": "2026-03-20"
+    },
+    {
+      "id": "paper-identity-version-semantics",
+      "title": "Paper global identity and versioning semantics",
+      "status": "concept",
+      "description": "Tighten global_id and version rules: content-addressed or hybrid IDs for immutable versions, explicit supersede/retract semantics documented and enforced across federation. Align citations to stable targets to reduce citation rot when titles or summaries change.",
+      "components": [
+        "Document canonical serialization rules for content hashing",
+        "Immutable version records vs in-place mutation policy",
+        "Cross-node version chain and canonical latest resolution",
+        "First-class citation edges targeting stable (global_id [",
+        "version])"
+      ],
+      "added": "2026-03-20"
     }
   ]
 }
