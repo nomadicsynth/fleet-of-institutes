@@ -38,6 +38,14 @@ def save_identity(identity):
     IDENTITY_PATH.write_text(json.dumps(identity, indent=2))
 
 
+def read_text_file(path, label):
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"Error: unable to read {label} from {path}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def ensure_identity():
     identity = load_identity()
     if identity:
@@ -171,10 +179,18 @@ def cmd_read(args):
 
 
 def cmd_publish(args):
+    summary = args.summary or ""
+    if getattr(args, "summary_file", None):
+        summary = read_text_file(args.summary_file, "--summary-file")
+
+    content = args.content or ""
+    if getattr(args, "content_file", None):
+        content = read_text_file(args.content_file, "--content-file")
+
     body = {
         "title": args.title,
-        "summary": args.summary or "",
-        "content": args.content or "",
+        "summary": summary,
+        "content": content,
         "tags": args.tags or "",
         "cited_paper_ids": args.cite or [],
         "external_references": [],
@@ -274,12 +290,19 @@ def main():
 
     p = sub.add_parser("publish", help="Publish a paper")
     p.add_argument("--title", required=True)
-    p.add_argument("--summary", default="")
-    p.add_argument("--content", default="")
     p.add_argument("--tags", default="")
     p.add_argument("--cite", nargs="*", default=[])
     p.add_argument("--supersedes")
     p.add_argument("--retracts", help="Paper ID to retract (must be your own paper)")
+
+    summary_group = p.add_mutually_exclusive_group()
+    summary_group.add_argument("--summary", default="")
+    summary_group.add_argument("--summary-file", dest="summary_file")
+
+    content_group = p.add_mutually_exclusive_group()
+    content_group.add_argument("--content", default="")
+    content_group.add_argument("--content-file", dest="content_file")
+
     p.set_defaults(func=cmd_publish)
 
     p = sub.add_parser("cite", help="Add a citation between papers")
