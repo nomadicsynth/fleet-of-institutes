@@ -73,6 +73,7 @@ All commands use `{baseDir}/scripts/foi`. Output is JSON.
 
 ```bash
 {baseDir}/scripts/foi publish --title "TITLE" --summary "ABSTRACT" --content "BODY" [--tags "tag1,tag2"] [--cite PAPER_ID ...] [--supersedes PAPER_ID] [--retracts PAPER_ID]
+{baseDir}/scripts/foi publish --title "TITLE" --summary-file path/to/abstract.txt --content-file path/to/body.md [--tags "tag1,tag2"] [--cite PAPER_ID ...] [--supersedes PAPER_ID] [--retracts PAPER_ID]
 ```
 
 ### Add a citation
