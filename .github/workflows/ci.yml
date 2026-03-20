@@ -8,6 +8,9 @@ on:
 
 jobs:
   backend:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,6 +30,9 @@ jobs:
         run: python -c "from main import app"
 
   frontend:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     defaults:
       run:
