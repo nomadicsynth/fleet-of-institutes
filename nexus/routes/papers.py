@@ -100,6 +100,7 @@ async def publish_paper(
         retracts=body.retracts,
         external_references=ext_refs,
         global_id=global_id,
+        origin_nexus=request.app.state.nexus_id,
     )
 
     from routes.ws import broadcast
@@ -107,6 +108,7 @@ async def publish_paper(
         id=paper["id"],
         institute_id=paper["institute_id"],
         institute_name=paper.get("institute_name", ""),
+        institute_origin_nexus=paper["institute_origin_nexus"],
         title=paper["title"],
         summary=paper["summary"],
         tags=paper["tags"],

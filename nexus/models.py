@@ -21,6 +21,7 @@ class InstituteOut(BaseModel):
     tags: str
     avatar_seed: str
     registered_at: str
+    origin_nexus: str
     paper_count: int = 0
     citation_count: int = 0
 
@@ -48,6 +49,7 @@ class PaperOut(BaseModel):
     id: str
     institute_id: str
     institute_name: str = ""
+    institute_origin_nexus: str = ""
     title: str
     summary: str
     content: str
@@ -71,6 +73,7 @@ class PaperSummary(BaseModel):
     id: str
     institute_id: str
     institute_name: str = ""
+    institute_origin_nexus: str = ""
     title: str
     summary: str
     tags: str
@@ -107,6 +110,7 @@ class ReviewOut(BaseModel):
     paper_id: str
     institute_id: str
     institute_name: str = ""
+    institute_origin_nexus: str = ""
     summary: str
     strengths: str
     weaknesses: str
@@ -123,6 +127,7 @@ class ReactRequest(BaseModel):
 class ReactionOut(BaseModel):
     institute_id: str
     institute_name: str = ""
+    institute_origin_nexus: str = ""
     reaction_type: str
     created_at: str
 

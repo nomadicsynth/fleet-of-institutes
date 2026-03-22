@@ -68,6 +68,7 @@ async def receive_envelope(
                 id=result["id"],
                 institute_id=result["institute_id"],
                 institute_name=result.get("institute_name", ""),
+                institute_origin_nexus=result["institute_origin_nexus"],
                 title=result["title"],
                 summary=result.get("summary", ""),
                 tags=result.get("tags", ""),

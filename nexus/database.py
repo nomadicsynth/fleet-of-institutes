@@ -21,8 +21,10 @@ _TABLES = [
         tags          VARCHAR(500) NOT NULL DEFAULT '',
         avatar_seed   VARCHAR(64) NOT NULL DEFAULT '',
         registered_at VARCHAR(64) NOT NULL,
-        origin_nexus  VARCHAR(255) NOT NULL DEFAULT '',
-        UNIQUE KEY uq_pubkey (public_key)
+        origin_nexus  VARCHAR(255) NOT NULL,
+        UNIQUE KEY uq_pubkey (public_key),
+        UNIQUE KEY uq_origin_name (origin_nexus, name),
+        CONSTRAINT chk_institutes_origin_nonempty CHECK (CHAR_LENGTH(TRIM(origin_nexus)) > 0)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -39,11 +41,12 @@ _TABLES = [
         external_references  TEXT NOT NULL,
         global_id            VARCHAR(128) NOT NULL DEFAULT '',
         content_cached       TINYINT(1) NOT NULL DEFAULT 1,
-        origin_nexus         VARCHAR(255) NOT NULL DEFAULT '',
+        origin_nexus         VARCHAR(255) NOT NULL,
         UNIQUE KEY uq_global_id (global_id),
         KEY idx_supersedes (supersedes),
         KEY idx_retracts (retracts),
-        FOREIGN KEY (institute_id) REFERENCES institutes(id)
+        FOREIGN KEY (institute_id) REFERENCES institutes(id),
+        CONSTRAINT chk_papers_origin_nonempty CHECK (CHAR_LENGTH(TRIM(origin_nexus)) > 0)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -169,6 +172,19 @@ def make_avatar_seed(name: str) -> str:
     return hashlib.sha256(name.encode()).hexdigest()[:12]
 
 
+def make_institute_avatar_seed(origin_nexus: str, name: str, public_key: str) -> str:
+    payload = f"{origin_nexus}\n{name}\n{public_key}"
+    return hashlib.sha256(payload.encode()).hexdigest()[:12]
+
+
+def _require_non_empty_origin_nexus(value: str | None, context: str) -> str:
+    """Write-path guard so bad requests fail before hitting the DB."""
+    s = (value or "").strip()
+    if not s:
+        raise ValueError(f"{context}: origin_nexus must be non-empty")
+    return s
+
+
 # ── Institute queries ───────────────────────────────────────────────
 
 def insert_institute(
@@ -182,8 +198,9 @@ def insert_institute(
     registered_at: str | None = None,
     origin_nexus: str = "",
 ) -> dict:
+    _require_non_empty_origin_nexus(origin_nexus, "insert_institute")
     iid = institute_id or uuid.uuid4().hex
-    avatar_seed = make_avatar_seed(name)
+    avatar_seed = make_institute_avatar_seed(origin_nexus, name, public_key)
     ts = registered_at or datetime.now(timezone.utc).isoformat()
     conn.execute(
         """INSERT INTO institutes
@@ -239,11 +256,14 @@ def insert_paper(
     content_cached: bool = True,
     origin_nexus: str = "",
 ) -> dict:
+    _require_non_empty_origin_nexus(origin_nexus, "insert_paper")
     ts = timestamp or datetime.now(timezone.utc).isoformat()
 
     if not global_id:
         inst = get_institute(conn, institute_id)
-        pub_key = inst["public_key"] if inst else ""
+        if not inst:
+            raise ValueError("insert_paper: institute not found for global_id")
+        pub_key = inst["public_key"]
         global_id = compute_global_id(pub_key, title, content, ts)
 
     pid = paper_id or generate_paper_id(global_id)
@@ -267,13 +287,16 @@ def insert_paper(
 
 
 def get_paper(conn: Connection, paper_id: str) -> dict | None:
-    row = conn.execute("SELECT * FROM papers WHERE id = %s", (paper_id,)).fetchone()
+    row = conn.execute(
+        """SELECT p.*, i.name AS institute_name, i.origin_nexus AS institute_origin_nexus
+           FROM papers p
+           INNER JOIN institutes i ON p.institute_id = i.id
+           WHERE p.id = %s""",
+        (paper_id,),
+    ).fetchone()
     if not row:
         return None
     d = dict(row)
-
-    inst = conn.execute("SELECT name FROM institutes WHERE id = %s", (d["institute_id"],)).fetchone()
-    d["institute_name"] = inst["name"] if inst else ""
 
     d["citations_outgoing"] = [
         r["cited_paper_id"]
@@ -286,7 +309,9 @@ def get_paper(conn: Connection, paper_id: str) -> dict | None:
     d["citation_count"] = len(d["citations_incoming"])
 
     reactions = conn.execute(
-        """SELECT r.institute_id, i.name AS institute_name, r.reaction_type, r.created_at
+        """SELECT r.institute_id, i.name AS institute_name,
+                  i.origin_nexus AS institute_origin_nexus,
+                  r.reaction_type, r.created_at
            FROM reactions r JOIN institutes i ON r.institute_id = i.id
            WHERE r.paper_id = %s""",
         (paper_id,),
@@ -368,6 +393,7 @@ def get_feed(
 
     rows = conn.execute(
         f"""SELECT p.*, i.name AS institute_name,
+                   i.origin_nexus AS institute_origin_nexus,
                    (SELECT COUNT(*) FROM citations WHERE cited_paper_id = p.id) AS citation_count
             FROM papers p
             JOIN institutes i ON p.institute_id = i.id
@@ -400,6 +426,7 @@ def get_trending(conn: Connection, hours: int = 24, limit: int = 20) -> list[dic
     rows = conn.execute(
         """SELECT ranked.* FROM (
                SELECT p.*, i.name AS institute_name,
+                      i.origin_nexus AS institute_origin_nexus,
                       (SELECT COUNT(*) FROM citations WHERE cited_paper_id = p.id
                        AND citing_paper_id IN (SELECT id FROM papers WHERE timestamp >= %s)) AS recent_citations,
                       (SELECT COUNT(*) FROM reactions WHERE paper_id = p.id AND created_at >= %s) AS recent_reactions
@@ -465,12 +492,17 @@ def insert_review(
         (review_id, paper_id, institute_id, summary, strengths, weaknesses, questions, recommendation, confidence, ts),
     )
     conn.commit()
-    inst = conn.execute("SELECT name FROM institutes WHERE id = %s", (institute_id,)).fetchone()
+    inst = conn.execute(
+        "SELECT name, origin_nexus FROM institutes WHERE id = %s", (institute_id,)
+    ).fetchone()
+    if not inst:
+        raise ValueError("insert_review: reviewer institute missing")
     return {
         "id": review_id,
         "paper_id": paper_id,
         "institute_id": institute_id,
-        "institute_name": inst["name"] if inst else "",
+        "institute_name": inst["name"],
+        "institute_origin_nexus": inst["origin_nexus"],
         "summary": summary,
         "strengths": strengths,
         "weaknesses": weaknesses,
@@ -483,7 +515,8 @@ def insert_review(
 
 def get_reviews_for_paper(conn: Connection, paper_id: str) -> list[dict]:
     rows = conn.execute(
-        """SELECT rv.*, i.name AS institute_name
+        """SELECT rv.*, i.name AS institute_name,
+                  i.origin_nexus AS institute_origin_nexus
            FROM reviews rv JOIN institutes i ON rv.institute_id = i.id
            WHERE rv.paper_id = %s
            ORDER BY rv.created_at""",
@@ -494,7 +527,8 @@ def get_reviews_for_paper(conn: Connection, paper_id: str) -> list[dict]:
 
 def get_review(conn: Connection, review_id: str) -> dict | None:
     row = conn.execute(
-        """SELECT rv.*, i.name AS institute_name
+        """SELECT rv.*, i.name AS institute_name,
+                  i.origin_nexus AS institute_origin_nexus
            FROM reviews rv JOIN institutes i ON rv.institute_id = i.id
            WHERE rv.id = %s""",
         (review_id,),
@@ -511,10 +545,15 @@ def add_reaction(
         (paper_id, institute_id, reaction_type, ts),
     )
     conn.commit()
-    inst = conn.execute("SELECT name FROM institutes WHERE id = %s", (institute_id,)).fetchone()
+    inst = conn.execute(
+        "SELECT name, origin_nexus FROM institutes WHERE id = %s", (institute_id,)
+    ).fetchone()
+    if not inst:
+        raise ValueError("add_reaction: institute missing")
     return {
         "institute_id": institute_id,
-        "institute_name": inst["name"] if inst else "",
+        "institute_name": inst["name"],
+        "institute_origin_nexus": inst["origin_nexus"],
         "reaction_type": reaction_type,
         "created_at": ts,
     }
@@ -603,6 +642,7 @@ def get_papers_since(conn: Connection, since: str, limit: int = 100) -> list[dic
         """SELECT p.id, p.institute_id, p.title, p.summary, p.tags,
                   p.timestamp, p.supersedes, p.retracts, p.external_references,
                   p.global_id, p.origin_nexus, i.name AS institute_name,
+                  i.origin_nexus AS institute_origin_nexus,
                   i.public_key AS institute_public_key
            FROM papers p
            JOIN institutes i ON p.institute_id = i.id

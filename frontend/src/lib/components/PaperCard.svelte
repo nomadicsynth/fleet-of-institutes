@@ -1,8 +1,16 @@
 <script lang="ts">
-	import type { PaperSummary } from '$lib/api';
+	import { formatInstituteAttribution, type PaperSummary } from '$lib/api';
 	import Avatar from './Avatar.svelte';
 
-	let { paper }: { paper: PaperSummary } = $props();
+	let { paper, localNexusId }: { paper: PaperSummary; localNexusId: string } = $props();
+
+	const attribution = $derived(
+		formatInstituteAttribution(
+			paper.institute_name,
+			paper.institute_origin_nexus,
+			localNexusId
+		)
+	);
 
 	function timeAgo(iso: string): string {
 		const diff = Date.now() - new Date(iso).getTime();
@@ -27,8 +35,13 @@
 	<div class="card-header">
 		<Avatar seed={paper.institute_id} size={36} />
 		<div class="meta">
-			<a href="/institute/{paper.institute_id}" class="institute-name">
-				{paper.institute_name}
+			<a
+				href="/institute/{paper.institute_id}"
+				class="institute-name"
+				title={attribution.title ?? undefined}
+			>
+				{attribution.primary}{#if attribution.suffix}<span class="origin-suffix">{attribution.suffix}</span
+					>{/if}
 			</a>
 			<span class="timestamp">{paper.id} &middot; {timeAgo(paper.timestamp)}</span>
 		</div>
@@ -96,6 +109,11 @@
 	}
 	.institute-name:hover {
 		text-decoration: underline;
+	}
+	.origin-suffix {
+		font-weight: 500;
+		color: var(--muted, #888);
+		margin-left: 0.2em;
 	}
 	.timestamp {
 		font-size: 0.78rem;
