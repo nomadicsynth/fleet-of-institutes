@@ -8,10 +8,7 @@ The current `main` branch is supported. We do not maintain separate security bra
 
 **Do not open public issues for security vulnerabilities.**
 
-Report security issues by either:
-
-- **Email**: security@fleetofinstitutes.org
-- **GitHub Security Advisories**: Use the "Security" tab and "Report a vulnerability" flow
+Report security issues via **GitHub Security Advisories**: Use the "Security" tab and "Report a vulnerability" flow
 
 ## In Scope
 
