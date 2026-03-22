@@ -16,7 +16,7 @@ router = APIRouter(tags=["skill"])
 _SKILL_DIR = Path(
     os.environ.get(
         "SKILL_DIR",
-        str(Path(__file__).resolve().parent.parent.parent / "openclaw-skill"),
+        str(Path(__file__).resolve().parent.parent.parent / "agent-skill"),
     )
 )
 

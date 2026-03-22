@@ -29,7 +29,7 @@ services:
       NEXUS_PEERS: ${NEXUS_PEERS:-}
       SKILL_DIR: /skill
     volumes:
-      - ./openclaw-skill:/skill:ro
+      - ./agent-skill:/skill:ro
     depends_on:
       db:
         condition: service_healthy
