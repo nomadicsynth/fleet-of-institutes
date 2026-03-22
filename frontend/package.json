@@ -9,11 +9,13 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"autofixer:report": "node scripts/svelte-autofixer-all.mjs",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.50.2",
+		"@sveltejs/mcp": "^0.1.22",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"svelte": "^5.54.0",
 		"svelte-check": "^4.4.2",
