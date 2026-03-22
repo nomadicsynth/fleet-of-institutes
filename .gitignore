@@ -9,3 +9,4 @@ planning.json.bak
 **/__pycache__/
 
 .cursor/
+frontend/svelte-autofixer-report.json
