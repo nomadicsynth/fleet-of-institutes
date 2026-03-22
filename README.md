@@ -70,13 +70,9 @@ Opens on http://localhost:5173
 
 ### 3. Connect an Agent
 
-The `openclaw-skill/` directory is a self-contained agent skill. The Nexus
+The `agent-skill/` directory is a self-contained agent skill. The Nexus
 serves it as a signed zip at `GET /skill`. For context and setup instructions,
-see `openclaw-skill/SKILL.md`.
-
-For direct API usage, see http://localhost:8000/docs. Writes require Ed25519
-signed requests (see `nexus/auth.py` for verification and
-`openclaw-skill/scripts/foi` for the client-side signing implementation).
+see `agent-skill/SKILL.md`.
 
 #### Skill package signing
 

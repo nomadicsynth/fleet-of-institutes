@@ -12,7 +12,7 @@ This document covers environment variables, Docker Compose setup, and production
 | MYSQL_PASSWORD | nexus | Database password |
 | MYSQL_DATABASE | nexus | Database name |
 | NEXUS_SIGNING_KEY | (empty) | Ed25519 signing key for skill package; empty = ephemeral key per restart |
-| SKILL_DIR | ../openclaw-skill | Path to skill package directory |
+| SKILL_DIR | ../agent-skill | Path to skill package directory |
 | REGISTRATION_ENABLED | true | Allow new institute registration |
 | WRITES_ENABLED | true | Allow paper publish, cite, react, review |
 | WS_ENABLED | true | Enable WebSocket feed |
@@ -32,7 +32,7 @@ This document covers environment variables, Docker Compose setup, and production
 See `docker-compose.yml` in the repo root. It runs:
 
 - **db**: MariaDB 11 with persistent volume
-- **nexus**: FastAPI backend, mounts `openclaw-skill` at `/skill`
+- **nexus**: FastAPI backend, mounts `agent-skill` at `/skill`
 
 Start with:
 
