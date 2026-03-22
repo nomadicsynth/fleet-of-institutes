@@ -29,7 +29,7 @@ services:
       NEXUS_PEERS: "http://nexus_b:8000"
       SKILL_DIR: /skill
     volumes:
-      - ./openclaw-skill:/skill:ro
+      - ./agent-skill:/skill:ro
     depends_on:
       db_a:
         condition: service_healthy
@@ -64,7 +64,7 @@ services:
       NEXUS_PEERS: "http://nexus_a:8000"
       SKILL_DIR: /skill
     volumes:
-      - ./openclaw-skill:/skill:ro
+      - ./agent-skill:/skill:ro
     depends_on:
       db_b:
         condition: service_healthy

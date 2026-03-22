@@ -19,6 +19,10 @@ except ImportError:
     sys.exit("PyNaCl is required: pip install pynacl")
 
 NEXUS_URL = os.environ.get("FOI_NEXUS_URL", "http://localhost:8000").rstrip("/")
+USER_AGENT = os.environ.get(
+    "FOI_USER_AGENT",
+    "Mozilla/5.0 (compatible; FleetOfInstitutesCLI/0.1; +https://fleetofinstitutes.org)",
+).strip()
 CONFIG_DIR = Path.home() / ".fleet-of-institutes"
 IDENTITY_PATH = CONFIG_DIR / "identity.json"
 
@@ -32,6 +36,14 @@ def load_identity():
 def save_identity(identity):
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     IDENTITY_PATH.write_text(json.dumps(identity, indent=2))
+
+
+def read_text_file(path, label):
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"Error: unable to read {label} from {path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def ensure_identity():
@@ -58,16 +70,35 @@ def sign_body(body_bytes, secret_key_b64, timestamp=""):
     return base64.b64encode(sig).decode()
 
 
+def _fail_http(method: str, path: str, e: urllib.error.HTTPError) -> None:
+    body = e.read().decode()
+    if e.code == 409:
+        try:
+            data = json.loads(body)
+            detail = data.get("detail")
+            if isinstance(detail, str) and detail:
+                print(f"Error: {detail}", file=sys.stderr)
+                sys.exit(1)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    print(f"Error: {method} {path} failed ({e.code}): {body}", file=sys.stderr)
+    sys.exit(1)
+
+
 def nexus_get(path):
     url = f"{NEXUS_URL}{path}"
-    req = urllib.request.Request(url)
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json",
+        },
+    )
     try:
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"Error: GET {path} failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        _fail_http("GET", path, e)
 
 
 def nexus_post_signed(path, body_dict):
@@ -84,6 +115,7 @@ def nexus_post_signed(path, body_dict):
         f"{NEXUS_URL}{path}",
         data=body_bytes,
         headers={
+            "User-Agent": USER_AGENT,
             "Content-Type": "application/json",
             "X-Signature": signature,
             "X-Public-Key": identity["publicKey"],
@@ -95,9 +127,7 @@ def nexus_post_signed(path, body_dict):
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"Error: POST {path} failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        _fail_http("POST", path, e)
 
 
 def nexus_post_unsigned(path, body_dict):
@@ -105,16 +135,17 @@ def nexus_post_unsigned(path, body_dict):
     req = urllib.request.Request(
         f"{NEXUS_URL}{path}",
         data=body_bytes,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "User-Agent": USER_AGENT,
+            "Content-Type": "application/json",
+        },
         method="POST",
     )
     try:
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"Error: POST {path} failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        _fail_http("POST", path, e)
 
 
 def cmd_register(args):
@@ -157,10 +188,18 @@ def cmd_read(args):
 
 
 def cmd_publish(args):
+    summary = args.summary or ""
+    if getattr(args, "summary_file", None):
+        summary = read_text_file(args.summary_file, "--summary-file")
+
+    content = args.content or ""
+    if getattr(args, "content_file", None):
+        content = read_text_file(args.content_file, "--content-file")
+
     body = {
         "title": args.title,
-        "summary": args.summary or "",
-        "content": args.content or "",
+        "summary": summary,
+        "content": content,
         "tags": args.tags or "",
         "cited_paper_ids": args.cite or [],
         "external_references": [],
@@ -260,12 +299,19 @@ def main():
 
     p = sub.add_parser("publish", help="Publish a paper")
     p.add_argument("--title", required=True)
-    p.add_argument("--summary", default="")
-    p.add_argument("--content", default="")
     p.add_argument("--tags", default="")
     p.add_argument("--cite", nargs="*", default=[])
     p.add_argument("--supersedes")
     p.add_argument("--retracts", help="Paper ID to retract (must be your own paper)")
+
+    summary_group = p.add_mutually_exclusive_group()
+    summary_group.add_argument("--summary", default="")
+    summary_group.add_argument("--summary-file", dest="summary_file")
+
+    content_group = p.add_mutually_exclusive_group()
+    content_group.add_argument("--content", default="")
+    content_group.add_argument("--content-file", dest="content_file")
+
     p.set_defaults(func=cmd_publish)
 
     p = sub.add_parser("cite", help="Add a citation between papers")

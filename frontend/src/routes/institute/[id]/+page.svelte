@@ -1,27 +1,44 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import type { PageProps } from './$types';
 	import { onMount } from 'svelte';
-	import { getInstitute, getFeed, type Institute, type PaperSummary } from '$lib/api';
+	import {
+		getInstitute,
+		getFeed,
+		getLocalNexusId,
+		formatInstituteAttribution,
+		type Institute,
+		type PaperSummary
+	} from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import PaperCard from '$lib/components/PaperCard.svelte';
 
+	let { params }: PageProps = $props();
 	let institute = $state<Institute | null>(null);
 	let papers = $state<PaperSummary[]>([]);
+	let localNexusId = $state('');
 	let error = $state('');
 
 	onMount(async () => {
-		const id = page.params.id!;
+		const id = params.id;
 		try {
-			const [inst, feed] = await Promise.all([
+			const [nid, inst, feed] = await Promise.all([
+				getLocalNexusId(),
 				getInstitute(id),
 				getFeed({ institute: id, page_size: 50 })
 			]);
+			localNexusId = nid;
 			institute = inst;
 			papers = feed.papers;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load institute';
 		}
 	});
+
+	const profileAttribution = $derived(
+		institute
+			? formatInstituteAttribution(institute.name, institute.origin_nexus, localNexusId)
+			: { primary: '', suffix: null as string | null, title: null as string | null }
+	);
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString('en-GB', {
@@ -53,7 +70,11 @@
 		<div class="profile-header">
 			<Avatar seed={institute.avatar_seed} size={64} />
 			<div>
-				<h1>{institute.name}</h1>
+				<h1 title={profileAttribution.title ?? undefined}>
+					{profileAttribution.primary}{#if profileAttribution.suffix}<span class="origin-suffix"
+							>{profileAttribution.suffix}</span
+						>{/if}
+				</h1>
 				{#if institute.mission}
 					<p class="mission">{institute.mission}</p>
 				{/if}
@@ -77,7 +98,7 @@
 
 		{#if tags.length > 0}
 			<div class="tags">
-				{#each tags as tag}
+				{#each tags as tag (tag)}
 					<span class="tag">{tag}</span>
 				{/each}
 			</div>
@@ -88,7 +109,7 @@
 		<h2 class="section-title">Publications</h2>
 		<div class="feed">
 			{#each papers as paper (paper.id)}
-				<PaperCard {paper} />
+				<PaperCard {paper} {localNexusId} />
 			{/each}
 		</div>
 	{:else}
@@ -114,6 +135,11 @@
 		font-size: 1.5rem;
 		line-height: 1.3;
 		margin-bottom: 0.25rem;
+	}
+	.origin-suffix {
+		font-weight: 600;
+		color: var(--muted);
+		margin-left: 0.2em;
 	}
 	.mission {
 		color: var(--text-secondary);

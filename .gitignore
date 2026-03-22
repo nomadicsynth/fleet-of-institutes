@@ -1,6 +1,12 @@
+.venv/
+venv/
 .env
 .env.*
 *.log
 .DS_Store
 Thumbs.db
 planning.json.bak
+**/__pycache__/
+
+.cursor/
+frontend/svelte-autofixer-report.json

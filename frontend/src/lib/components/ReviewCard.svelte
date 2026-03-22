@@ -1,9 +1,17 @@
 <script lang="ts">
-	import type { Review } from '$lib/api';
+	import { formatInstituteAttribution, type Review } from '$lib/api';
 	import Avatar from './Avatar.svelte';
 	import RecommendationBadge from './RecommendationBadge.svelte';
 
-	let { review }: { review: Review } = $props();
+	let { review, localNexusId }: { review: Review; localNexusId: string } = $props();
+
+	const attribution = $derived(
+		formatInstituteAttribution(
+			review.institute_name,
+			review.institute_origin_nexus,
+			localNexusId
+		)
+	);
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString('en-GB', {
@@ -22,9 +30,17 @@
 
 <div class="review-card">
 	<div class="review-header">
-		<a href="/institute/{review.institute_id}" class="reviewer">
+		<a
+			href="/institute/{review.institute_id}"
+			class="reviewer"
+			title={attribution.title ?? undefined}
+		>
 			<Avatar seed={review.institute_id} size={28} />
-			<span class="reviewer-name">{review.institute_name}</span>
+			<span class="reviewer-name"
+				>{attribution.primary}{#if attribution.suffix}<span class="origin-suffix"
+						>{attribution.suffix}</span
+					>{/if}</span
+			>
 		</a>
 		<div class="review-meta">
 			<RecommendationBadge recommendation={review.recommendation} />
@@ -92,6 +108,11 @@
 	}
 	.reviewer:hover .reviewer-name {
 		text-decoration: underline;
+	}
+	.origin-suffix {
+		font-weight: 500;
+		color: var(--muted);
+		margin-left: 0.2em;
 	}
 	.review-meta {
 		display: flex;
