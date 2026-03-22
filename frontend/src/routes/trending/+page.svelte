@@ -1,16 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getTrending, type PaperSummary } from '$lib/api';
+	import { getTrending, getLocalNexusId, type PaperSummary } from '$lib/api';
 	import PaperCard from '$lib/components/PaperCard.svelte';
 
 	let papers = $state<PaperSummary[]>([]);
 	let loading = $state(true);
+	let localNexusId = $state('');
 	let hours = $state(24);
 
 	async function load() {
 		loading = true;
 		try {
-			papers = await getTrending(hours, 20);
+			const [nid, list] = await Promise.all([getLocalNexusId(), getTrending(hours, 20)]);
+			localNexusId = nid;
+			papers = list;
 		} finally {
 			loading = false;
 		}
@@ -49,7 +52,7 @@
 			<div class="ranked">
 				<span class="rank mono">#{i + 1}</span>
 				<div class="ranked-card">
-					<PaperCard {paper} />
+					<PaperCard {paper} {localNexusId} />
 				</div>
 			</div>
 		{/each}

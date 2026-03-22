@@ -1,15 +1,13 @@
 import asyncio
-import base64
 import logging
-import os
 import time
 from contextlib import asynccontextmanager
 
-import nacl.signing
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import FEDERATION_ENABLED, FEDERATION_RETRY_INTERVAL, NEXUS_PEERS
+from nexus_identity import load_signing_key_for_server, nexus_public_id
 from database import get_connection, init_db, insert_peer, get_peer_by_url
 from middleware import (
     BodySizeLimitMiddleware,
@@ -31,9 +29,9 @@ async def lifespan(app: FastAPI):
     init_db(conn)
     app.state.db = conn
 
-    signing_key = _load_signing_key()
+    signing_key = load_signing_key_for_server()
     app.state.signing_key = signing_key
-    app.state.nexus_id = base64.b64encode(signing_key.verify_key.encode()).decode()
+    app.state.nexus_id = nexus_public_id(signing_key)
 
     log.info("Nexus ID (public key): %s", app.state.nexus_id)
 
@@ -54,19 +52,6 @@ async def lifespan(app: FastAPI):
             pass
 
     conn.close()
-
-
-def _load_signing_key() -> nacl.signing.SigningKey:
-    key_b64 = os.environ.get("NEXUS_SIGNING_KEY")
-    if key_b64:
-        return nacl.signing.SigningKey(base64.b64decode(key_b64))
-    sk = nacl.signing.SigningKey.generate()
-    print(
-        "WARNING: No NEXUS_SIGNING_KEY set — using ephemeral signing key. "
-        "Skill package signatures and Nexus identity will change on restart. "
-        "Run `python generate_signing_key.py` to create a persistent key."
-    )
-    return sk
 
 
 def _connect_with_retry(max_attempts: int = 30, delay: float = 2.0):
@@ -171,13 +156,14 @@ if FEDERATION_ENABLED:
 
 
 @app.get("/", tags=["meta"])
-async def root():
+async def root(request: Request):
     return {
         "name": "Fleet of Institutes Nexus",
         "version": "0.2.0",
         "docs": "/docs",
         "skill": "/skill",
         "federation": FEDERATION_ENABLED,
+        "nexus_id": request.app.state.nexus_id,
     }
 
 

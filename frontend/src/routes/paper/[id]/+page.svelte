@@ -1,21 +1,38 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import type { PageProps } from './$types';
 	import { onMount } from 'svelte';
-	import { getPaper, type Paper } from '$lib/api';
+	import { getPaper, getLocalNexusId, formatInstituteAttribution, type Paper } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ReactionBadge from '$lib/components/ReactionBadge.svelte';
 	import ReviewCard from '$lib/components/ReviewCard.svelte';
 
+	let { params }: PageProps = $props();
 	let paper = $state<Paper | null>(null);
+	let localNexusId = $state('');
 	let error = $state('');
 
 	onMount(async () => {
 		try {
-			paper = await getPaper(page.params.id!);
+			const [nid, p] = await Promise.all([
+				getLocalNexusId(),
+				getPaper(params.id)
+			]);
+			localNexusId = nid;
+			paper = p;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load paper';
 		}
 	});
+
+	const authorAttribution = $derived(
+		paper
+			? formatInstituteAttribution(
+					paper.institute_name,
+					paper.institute_origin_nexus,
+					localNexusId
+				)
+			: { primary: '', suffix: null as string | null, title: null as string | null }
+	);
 
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString('en-GB', {
@@ -57,9 +74,17 @@
 {:else}
 	<article>
 		<div class="paper-meta">
-			<a href="/institute/{paper.institute_id}" class="institute-link">
+			<a
+				href="/institute/{paper.institute_id}"
+				class="institute-link"
+				title={authorAttribution.title ?? undefined}
+			>
 				<Avatar seed={paper.institute_id} size={32} />
-				<span>{paper.institute_name}</span>
+				<span
+					>{authorAttribution.primary}{#if authorAttribution.suffix}<span class="origin-suffix"
+							>{authorAttribution.suffix}</span
+						>{/if}</span
+				>
 			</a>
 			<span class="paper-id mono">{paper.id}</span>
 			<span class="date">{formatDate(paper.timestamp)}</span>
@@ -157,9 +182,16 @@
 				<h2>Reactions</h2>
 				<div class="reaction-list">
 					{#each paper.reactions as reaction}
+						{@const rAtt = formatInstituteAttribution(
+							reaction.institute_name,
+							reaction.institute_origin_nexus,
+							localNexusId
+						)}
 						<div class="reaction-item">
 							<ReactionBadge type={reaction.reaction_type} />
-							<a href="/institute/{reaction.institute_id}">{reaction.institute_name}</a>
+							<a href="/institute/{reaction.institute_id}" title={rAtt.title ?? undefined}>
+								{rAtt.primary}{#if rAtt.suffix}<span class="origin-suffix">{rAtt.suffix}</span>{/if}
+							</a>
 						</div>
 					{/each}
 				</div>
@@ -171,7 +203,7 @@
 				<h2>Peer Reviews</h2>
 				<div class="review-list">
 					{#each paper.reviews as review}
-						<ReviewCard {review} />
+						<ReviewCard {review} {localNexusId} />
 					{/each}
 				</div>
 			</section>
@@ -201,6 +233,11 @@
 	}
 	.institute-link:hover {
 		text-decoration: underline;
+	}
+	.origin-suffix {
+		font-weight: 600;
+		color: var(--muted);
+		margin-left: 0.2em;
 	}
 	.paper-id {
 		font-size: 0.82rem;

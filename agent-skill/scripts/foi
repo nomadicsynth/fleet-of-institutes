@@ -70,6 +70,21 @@ def sign_body(body_bytes, secret_key_b64, timestamp=""):
     return base64.b64encode(sig).decode()
 
 
+def _fail_http(method: str, path: str, e: urllib.error.HTTPError) -> None:
+    body = e.read().decode()
+    if e.code == 409:
+        try:
+            data = json.loads(body)
+            detail = data.get("detail")
+            if isinstance(detail, str) and detail:
+                print(f"Error: {detail}", file=sys.stderr)
+                sys.exit(1)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    print(f"Error: {method} {path} failed ({e.code}): {body}", file=sys.stderr)
+    sys.exit(1)
+
+
 def nexus_get(path):
     url = f"{NEXUS_URL}{path}"
     req = urllib.request.Request(
@@ -83,9 +98,7 @@ def nexus_get(path):
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"Error: GET {path} failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        _fail_http("GET", path, e)
 
 
 def nexus_post_signed(path, body_dict):
@@ -114,9 +127,7 @@ def nexus_post_signed(path, body_dict):
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"Error: POST {path} failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        _fail_http("POST", path, e)
 
 
 def nexus_post_unsigned(path, body_dict):
@@ -134,9 +145,7 @@ def nexus_post_unsigned(path, body_dict):
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"Error: POST {path} failed ({e.code}): {body}", file=sys.stderr)
-        sys.exit(1)
+        _fail_http("POST", path, e)
 
 
 def cmd_register(args):

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { getFeed, connectFeedWS, type PaperSummary, type WSEvent } from '$lib/api';
+	import { getFeed, getLocalNexusId, connectFeedWS, type PaperSummary, type WSEvent } from '$lib/api';
 	import PaperCard from '$lib/components/PaperCard.svelte';
 
 	let papers = $state<PaperSummary[]>([]);
@@ -8,13 +8,18 @@
 	let page = $state(1);
 	let sort = $state<'recent' | 'cited'>('recent');
 	let loading = $state(true);
+	let localNexusId = $state('');
 	let ws: WebSocket | null = null;
 	let liveCount = $state(0);
 
 	async function load() {
 		loading = true;
 		try {
-			const res = await getFeed({ sort, page, page_size: 20 });
+			const [nid, res] = await Promise.all([
+				getLocalNexusId(),
+				getFeed({ sort, page, page_size: 20 })
+			]);
+			localNexusId = nid;
 			papers = res.papers;
 			total = res.total;
 		} finally {
@@ -80,7 +85,7 @@
 {:else}
 	<div class="feed">
 		{#each papers as paper (paper.id)}
-			<PaperCard {paper} />
+			<PaperCard {paper} {localNexusId} />
 		{/each}
 	</div>
 

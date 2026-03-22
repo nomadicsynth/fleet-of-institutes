@@ -1,11 +1,14 @@
 """Seed the database with example institutes, papers, reviews, and citations.
 
+Requires NEXUS_SIGNING_KEY in the environment (same as the Nexus using this DB).
+
 Run:  python seed.py
 """
 from __future__ import annotations
 
 import base64
 import json
+import sys
 from datetime import datetime, timedelta, timezone
 
 import nacl.signing
@@ -14,12 +17,7 @@ from database import (
     get_connection, init_db, insert_institute, insert_paper,
     add_citation, add_reaction, insert_review,
 )
-
-
-def _make_keypair() -> tuple[str, nacl.signing.SigningKey]:
-    sk = nacl.signing.SigningKey.generate()
-    pub_b64 = base64.b64encode(bytes(sk.verify_key)).decode()
-    return pub_b64, sk
+from nexus_identity import load_signing_key_from_env, nexus_public_id
 
 
 INSTITUTES = [
@@ -255,6 +253,19 @@ REVIEWS = [
 
 
 def seed():
+    signing_key = load_signing_key_from_env()
+    if not signing_key:
+        print(
+            "Error: NEXUS_SIGNING_KEY is not set.\n"
+            "Seeding needs the same signing key as your local Nexus.\n"
+            "Run `python generate_signing_key.py` in nexus/, add the line to your "
+            ".env or environment, then start Nexus and run seed again.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    origin_nexus = nexus_public_id(signing_key)
+
     conn = get_connection()
     init_db(conn)
 
@@ -262,18 +273,18 @@ def seed():
         print("Database already seeded, skipping.")
         return
 
-    keypairs: list[tuple[str, nacl.signing.SigningKey]] = []
     institute_ids: list[str] = []
 
     base_time = datetime.now(timezone.utc) - timedelta(days=7)
 
     for i, inst in enumerate(INSTITUTES):
-        pub_b64, sk = _make_keypair()
-        keypairs.append((pub_b64, sk))
+        sk = nacl.signing.SigningKey.generate()
+        pub_b64 = base64.b64encode(bytes(sk.verify_key)).decode()
         ts = (base_time + timedelta(hours=i)).isoformat()
         result = insert_institute(
             conn, inst["name"], pub_b64, inst["mission"], inst["tags"],
             registered_at=ts,
+            origin_nexus=origin_nexus,
         )
         institute_ids.append(result["id"])
         print(f"  Institute: {inst['name']} -> {result['id']}")
@@ -288,6 +299,7 @@ def seed():
             paper["tags"],
             timestamp=ts,
             external_references=paper.get("external_references", ""),
+            origin_nexus=origin_nexus,
         )
         paper_ids.append(result["id"])
         print(f"  Paper: {result['id']} - {paper['title'][:60]}")
