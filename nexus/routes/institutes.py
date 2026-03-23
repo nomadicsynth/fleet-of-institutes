@@ -20,7 +20,7 @@ def _dup_key_message(exc: BaseException) -> str | None:
     return str(exc.args[1])
 
 
-@router.post("", response_model=InstituteOut, status_code=201)
+@router.post("/register", response_model=InstituteOut, status_code=201)
 async def register_institute(
     body: InstituteCreate,
     request: Request,

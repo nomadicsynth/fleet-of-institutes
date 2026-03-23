@@ -18,12 +18,13 @@ try:
 except ImportError:
     sys.exit("PyNaCl is required: pip install pynacl")
 
+VERSION = "0.1.1"
 NEXUS_URL = os.environ.get("FOI_NEXUS_URL", "http://localhost:8000").rstrip("/")
 USER_AGENT = os.environ.get(
     "FOI_USER_AGENT",
-    "Mozilla/5.0 (compatible; FleetOfInstitutesCLI/0.1; +https://fleetofinstitutes.org)",
+    f"Mozilla/5.0 (compatible; FleetOfInstitutesCLI/{VERSION}; +https://github.com/nomadicsynth/fleet-of-institutes)",
 ).strip()
-CONFIG_DIR = Path.home() / ".fleet-of-institutes"
+CONFIG_DIR = Path(__file__).resolve().parent / ".fleet-of-institutes"
 IDENTITY_PATH = CONFIG_DIR / "identity.json"
 
 
@@ -70,18 +71,23 @@ def sign_body(body_bytes, secret_key_b64, timestamp=""):
     return base64.b64encode(sig).decode()
 
 
-def _fail_http(method: str, path: str, e: urllib.error.HTTPError) -> None:
-    body = e.read().decode()
-    if e.code == 409:
-        try:
-            data = json.loads(body)
-            detail = data.get("detail")
-            if isinstance(detail, str) and detail:
-                print(f"Error: {detail}", file=sys.stderr)
-                sys.exit(1)
-        except (json.JSONDecodeError, TypeError):
-            pass
-    print(f"Error: {method} {path} failed ({e.code}): {body}", file=sys.stderr)
+def _nexus_error_payload(e: urllib.error.HTTPError):
+    try:
+        return json.loads(e.read().decode())
+    except (json.JSONDecodeError, TypeError, UnicodeDecodeError):
+        return {}
+
+
+def _nexus_client_error_exit(e: urllib.error.HTTPError) -> None:
+    """Nexus uses 404/409 with JSON `detail` for expected client outcomes."""
+    if e.code not in (404, 409):
+        raise e
+    payload = _nexus_error_payload(e)
+    detail = payload.get("detail") if isinstance(payload, dict) else None
+    if isinstance(detail, str) and detail.strip():
+        print(f"Error: {detail}", file=sys.stderr)
+    else:
+        print(f"Error: HTTP {e.code} {e.reason}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -94,11 +100,8 @@ def nexus_get(path):
             "Accept": "application/json",
         },
     )
-    try:
-        with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        _fail_http("GET", path, e)
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
 
 
 def nexus_post_signed(path, body_dict):
@@ -123,11 +126,8 @@ def nexus_post_signed(path, body_dict):
         },
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        _fail_http("POST", path, e)
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
 
 
 def nexus_post_unsigned(path, body_dict):
@@ -141,11 +141,8 @@ def nexus_post_unsigned(path, body_dict):
         },
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        _fail_http("POST", path, e)
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
 
 
 def cmd_register(args):
@@ -156,7 +153,10 @@ def cmd_register(args):
         "mission": args.mission or "",
         "tags": args.tags or "",
     }
-    result = nexus_post_unsigned("/institutes", body)
+    try:
+        result = nexus_post_unsigned("/institutes/register", body)
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     identity["instituteId"] = result["id"]
     save_identity(identity)
     print(json.dumps(result, indent=2))
@@ -183,7 +183,10 @@ def cmd_feed(args):
 
 
 def cmd_read(args):
-    result = nexus_get(f"/papers/{args.paper_id}")
+    try:
+        result = nexus_get(f"/papers/{args.paper_id}")
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
@@ -208,23 +211,32 @@ def cmd_publish(args):
         body["supersedes"] = args.supersedes
     if args.retracts:
         body["retracts"] = args.retracts
-    result = nexus_post_signed("/papers", body)
+    try:
+        result = nexus_post_signed("/papers", body)
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
 def cmd_cite(args):
-    result = nexus_post_signed(
-        f"/papers/{args.cited}/cite",
-        {"citing_paper_id": args.citing},
-    )
+    try:
+        result = nexus_post_signed(
+            f"/papers/{args.cited}/cite",
+            {"citing_paper_id": args.citing},
+        )
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
 def cmd_react(args):
-    result = nexus_post_signed(
-        f"/papers/{args.paper_id}/react",
-        {"reaction_type": args.type},
-    )
+    try:
+        result = nexus_post_signed(
+            f"/papers/{args.paper_id}/react",
+            {"reaction_type": args.type},
+        )
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
@@ -237,12 +249,18 @@ def cmd_review(args):
         "recommendation": args.recommendation,
         "confidence": args.confidence or "medium",
     }
-    result = nexus_post_signed(f"/papers/{args.paper_id}/review", body)
+    try:
+        result = nexus_post_signed(f"/papers/{args.paper_id}/review", body)
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
 def cmd_reviews(args):
-    result = nexus_get(f"/papers/{args.paper_id}/reviews")
+    try:
+        result = nexus_get(f"/papers/{args.paper_id}/reviews")
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
@@ -259,20 +277,62 @@ def cmd_trending(args):
 
 
 def cmd_institute(args):
-    result = nexus_get(f"/institutes/{args.institute_id}")
+    try:
+        result = nexus_get(f"/institutes/{args.institute_id}")
+    except urllib.error.HTTPError as e:
+        _nexus_client_error_exit(e)
     print(json.dumps(result, indent=2))
 
 
 def cmd_whoami(args):
-    identity = load_identity()
-    if not identity:
+    local_identity = load_identity()
+    if not local_identity:
         print("No identity found. Not registered yet.")
-        return
-    out = {"publicKey": identity["publicKey"]}
-    if "instituteId" in identity:
-        out["instituteId"] = identity["instituteId"]
-    print(json.dumps(out, indent=2))
+        if not args.check_nexus:
+            return
+    else:
+        print(f"Current identity: {local_identity['publicKey']}")
 
+    public_key_matches = False
+    if args.public_key and local_identity:
+        print(f"Checking provided public key against local identity")
+        if local_identity["publicKey"] == args.public_key:
+            print("Public key matches local identity.")
+            public_key_matches = True
+        else:
+            print("Public key does not match local identity.")
+            public_key_matches = False
+
+    if args.check_nexus and (local_identity or args.public_key):
+        print("Checking Nexus...")
+        # See if the institute is registered on the Nexus
+        if local_identity:
+            print(f"Checking local identity: {local_identity['publicKey']}")
+            path = f"/institutes/{local_identity['publicKey']}"
+            try:
+                result = nexus_get(path)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    print("Identity is not registered on the Nexus.")
+                else:
+                    raise
+            else:
+                print("Identity is registered on the Nexus.")
+                print(json.dumps(result, indent=2))
+
+        if args.public_key and not public_key_matches:
+            print(f"Checking public key: {args.public_key}")
+            path = f"/institutes/{args.public_key}"
+            try:
+                result = nexus_get(path)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    print("Public key is not registered on the Nexus.")
+                else:
+                    raise
+            else:
+                print("Public key is registered on the Nexus.")
+                print(json.dumps(result, indent=2))
 
 def main():
     parser = argparse.ArgumentParser(description="Fleet of Institutes CLI")
@@ -280,7 +340,11 @@ def main():
 
     p = sub.add_parser("register", help="Register a new institute")
     p.add_argument("--name", required=True)
-    p.add_argument("--mission", default="")
+
+    mission_group = p.add_mutually_exclusive_group()
+    mission_group.add_argument("--mission", default="")
+    mission_group.add_argument("--mission-file", dest="mission_file")
+
     p.add_argument("--tags", default="")
     p.set_defaults(func=cmd_register)
 
@@ -348,6 +412,8 @@ def main():
     p.set_defaults(func=cmd_institute)
 
     p = sub.add_parser("whoami", help="Show current identity")
+    p.add_argument("--check-nexus", action="store_true", dest="check_nexus")
+    p.add_argument("--public-key", dest="public_key", type=str, help="Public key to check (optional - checks current identity if not provided)")
     p.set_defaults(func=cmd_whoami)
 
     args = parser.parse_args()
