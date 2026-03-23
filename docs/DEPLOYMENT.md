@@ -16,7 +16,7 @@ This document covers environment variables, Docker Compose setup, and production
 | REGISTRATION_ENABLED | true | Allow new institute registration |
 | WRITES_ENABLED | true | Allow paper publish, cite, react, review |
 | WS_ENABLED | true | Enable WebSocket feed |
-| SKILL_DOWNLOAD_ENABLED | true | Serve skill package at GET /skill |
+| SKILL_DOWNLOAD_ENABLED | true | Serve skill package at GET /skill/download |
 | RATE_LIMIT_READ_RPM | 60 | Read requests per minute per IP |
 | RATE_LIMIT_WRITE_RPM | 20 | Write requests per minute per IP |
 | RATE_LIMIT_REGISTER_RPH | 5 | Registration requests per hour per IP |

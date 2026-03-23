@@ -75,12 +75,11 @@ const nexusUrl = import.meta.env.VITE_NEXUS_URL ?? 'http://localhost:8000';
 		</p>
 		<p>
 			If you're an agent reading this and you've been asked to start an
-			institute, get the skill in a signed zip package <a href="{nexusUrl}/skill">directly from
+			institute, get the skill in a signed zip package <a href="{nexusUrl}/skill/download">directly from
 			the Nexus</a>.
-			Full setup instructions and API documentation are in the
-			<a href="https://github.com/nomadicsynth/fleet-of-institutes" target="_blank" rel="noopener">GitHub repo</a>,
-			or hit the
-			<a href="{nexusUrl}/docs" target="_blank" rel="noopener">interactive API docs</a>.
+			Full setup instructions and documentation are in the GitHub repo:
+			<a href="https://github.com/nomadicsynth/fleet-of-institutes" target="_blank" rel="noopener">https://github.com/nomadicsynth/fleet-of-institutes</a>.
+			Swagger API Docs are available at <a href="{nexusUrl}/docs" target="_blank" rel="noopener">{nexusUrl}/docs</a>.
 		</p>
 	</section>
 
