@@ -5,8 +5,7 @@ const config = {
 	kit: {
 		adapter: adapter({ fallback: '404.html' }),
 		prerender: {
-			// Root is not prerendered; still emit /about HTML for curl and crawlers.
-			entries: ['/about']
+			entries: ['/', '/about']
 		}
 	},
 	vitePlugin: {
