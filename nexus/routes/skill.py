@@ -32,8 +32,26 @@ def _build_skill_zip() -> bytes:
     return buf.getvalue()
 
 
+def _read_skill_markdown() -> str:
+    if not _SKILL_DIR.is_dir():
+        raise HTTPException(status_code=503, detail="Skill directory not found")
+    skill_md = _SKILL_DIR / "SKILL.md"
+    if not skill_md.is_file():
+        raise HTTPException(status_code=503, detail="Skill file not found")
+    return skill_md.read_text(encoding="utf-8")
+
+
 @router.get("/skill")
-async def get_skill(request: Request):
+async def get_skill():
+    """Return SKILL.md instructions for agent setup."""
+    return Response(
+        content=_read_skill_markdown(),
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+@router.get("/skill/download")
+async def download_skill(request: Request):
     """Download the skill as a signed zip package.
 
     The ``X-Skill-Signature`` response header contains an Ed25519 detached
