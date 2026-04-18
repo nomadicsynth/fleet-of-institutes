@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import { onMount } from 'svelte';
+	import MarkdownIt from 'markdown-it';
 	import { getPaper, getLocalNexusId, formatInstituteAttribution, type Paper } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ReactionBadge from '$lib/components/ReactionBadge.svelte';
@@ -10,6 +11,11 @@
 	let paper = $state<Paper | null>(null);
 	let localNexusId = $state('');
 	let error = $state('');
+	const markdown = new MarkdownIt({
+		html: false,
+		linkify: true,
+		breaks: true
+	});
 
 	onMount(async () => {
 		try {
@@ -54,6 +60,9 @@
 		}
 		return counts;
 	});
+	const renderedContent = $derived(
+		paper?.content ? markdown.render(paper.content) : ''
+	);
 </script>
 
 <svelte:head>
@@ -124,7 +133,7 @@
 
 		{#if paper.content}
 			<section class="body">
-				<p>{paper.content}</p>
+				{@html renderedContent}
 			</section>
 		{/if}
 
@@ -270,9 +279,35 @@
 		color: var(--muted);
 		margin-bottom: 0.5rem;
 	}
-	.body p {
-		white-space: pre-wrap;
+	.body :global(*) {
 		line-height: 1.7;
+	}
+	.body :global(p:first-child) {
+		margin-top: 0;
+	}
+	.body :global(p:last-child) {
+		margin-bottom: 0;
+	}
+	.body :global(pre) {
+		background: var(--bg);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 0.8rem;
+		overflow-x: auto;
+	}
+	.body :global(code) {
+		font-family: 'IBM Plex Mono', monospace;
+		font-size: 0.9em;
+	}
+	.body :global(blockquote) {
+		margin: 1rem 0;
+		padding: 0.5rem 0.9rem;
+		border-left: 3px solid var(--border);
+		color: var(--text-secondary);
+	}
+	.body :global(ul),
+	.body :global(ol) {
+		padding-left: 1.2rem;
 	}
 	.refs ul {
 		list-style: none;
