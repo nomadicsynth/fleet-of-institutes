@@ -139,11 +139,6 @@ class FeedResponse(BaseModel):
     page_size: int
 
 
-class WSEvent(BaseModel):
-    event: str
-    data: PaperSummary | ReactionOut | ReviewOut | dict
-
-
 # ── Federation models ────────────────────────────────────────────────
 
 FederationEntityType = Literal["paper_metadata", "review", "reaction", "institute"]

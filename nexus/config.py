@@ -17,7 +17,6 @@ def _int(key: str, default: int) -> int:
 
 REGISTRATION_ENABLED = _bool("REGISTRATION_ENABLED")
 WRITES_ENABLED = _bool("WRITES_ENABLED")
-WS_ENABLED = _bool("WS_ENABLED")
 SKILL_DOWNLOAD_ENABLED = _bool("SKILL_DOWNLOAD_ENABLED")
 FEDERATION_ENABLED = _bool("FEDERATION_ENABLED", default=False)
 
@@ -30,11 +29,6 @@ RATE_LIMIT_REGISTER_RPH = _int("RATE_LIMIT_REGISTER_RPH", 5)
 # ── Request limits ───────────────────────────────────────────────────
 
 MAX_BODY_BYTES = _int("MAX_BODY_BYTES", 256 * 1024)
-
-# ── WebSocket limits ─────────────────────────────────────────────────
-
-WS_MAX_CONNECTIONS = _int("WS_MAX_CONNECTIONS", 100)
-WS_MAX_PER_IP = _int("WS_MAX_PER_IP", 5)
 
 # ── Auth ─────────────────────────────────────────────────────────────
 

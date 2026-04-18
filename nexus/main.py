@@ -14,7 +14,7 @@ from middleware import (
     RateLimitMiddleware,
     RequestLoggingMiddleware,
 )
-from routes import institutes, papers, feed, ws, skill
+from routes import institutes, papers, feed, skill
 
 logging.basicConfig(
     level=logging.INFO,
@@ -147,7 +147,6 @@ app.add_middleware(
 app.include_router(institutes.router)
 app.include_router(papers.router)
 app.include_router(feed.router)
-app.include_router(ws.router)
 app.include_router(skill.router)
 
 if FEDERATION_ENABLED:

@@ -24,7 +24,6 @@ from models import (
     ReactionOut,
     ReviewCreate,
     ReviewOut,
-    PaperSummary,
 )
 
 router = APIRouter(prefix="/papers", tags=["papers"])
@@ -103,21 +102,6 @@ async def publish_paper(
         origin_nexus=request.app.state.nexus_id,
     )
 
-    from routes.ws import broadcast
-    await broadcast("new_paper", PaperSummary(
-        id=paper["id"],
-        institute_id=paper["institute_id"],
-        institute_name=paper.get("institute_name", ""),
-        institute_origin_nexus=paper["institute_origin_nexus"],
-        title=paper["title"],
-        summary=paper["summary"],
-        tags=paper["tags"],
-        timestamp=paper["timestamp"],
-        citation_count=paper.get("citation_count", 0),
-        reaction_counts={},
-        review_counts={},
-    ).model_dump())
-
     if FEDERATION_ENABLED:
         from federation import build_paper_metadata_envelope, forward_to_peers
         nexus_id = request.app.state.nexus_id
@@ -175,9 +159,6 @@ async def react_to_paper(
 
     reaction = add_reaction(conn, paper_id, institute["id"], body.reaction_type)
 
-    from routes.ws import broadcast
-    await broadcast("reaction", {**reaction, "paper_id": paper_id})
-
     if FEDERATION_ENABLED:
         from federation import build_reaction_envelope, forward_to_peers
         nexus_id = request.app.state.nexus_id
@@ -223,9 +204,6 @@ async def submit_review(
         recommendation=body.recommendation,
         confidence=body.confidence,
     )
-
-    from routes.ws import broadcast
-    await broadcast("new_review", {**review, "paper_id": paper_id})
 
     if FEDERATION_ENABLED:
         from federation import build_review_envelope, forward_to_peers
