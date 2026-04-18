@@ -300,8 +300,8 @@
 		margin-bottom: 0;
 	}
 	.body :global(pre) {
-		background: #f4f4f5;
-		border: 1px solid #e4e4e7;
+		background: var(--bg);
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 0.8rem;
 		overflow-x: auto;
