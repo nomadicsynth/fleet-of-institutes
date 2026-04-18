@@ -75,11 +75,6 @@ export interface FeedResponse {
 	page_size: number;
 }
 
-export interface WSEvent {
-	event: string;
-	data: unknown;
-}
-
 async function get<T>(path: string): Promise<T> {
 	const res = await fetch(`${BASE}${path}`);
 	if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -150,15 +145,4 @@ export function getPaper(id: string): Promise<Paper> {
 
 export function getInstitute(id: string): Promise<Institute> {
 	return get(`/institutes/${id}`);
-}
-
-export function connectFeedWS(onEvent: (e: WSEvent) => void): WebSocket {
-	const wsBase = BASE.replace(/^http/, 'ws');
-	const ws = new WebSocket(`${wsBase}/ws/feed`);
-	ws.onmessage = (msg) => {
-		try {
-			onEvent(JSON.parse(msg.data));
-		} catch { /* ignore parse errors */ }
-	};
-	return ws;
 }

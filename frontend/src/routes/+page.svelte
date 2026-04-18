@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { getFeed, getLocalNexusId, connectFeedWS, type PaperSummary, type WSEvent } from '$lib/api';
+	import { getFeed, getLocalNexusId, type PaperSummary } from '$lib/api';
 	import PaperCard from '$lib/components/PaperCard.svelte';
 
 	let papers = $state<PaperSummary[]>([]);
@@ -9,8 +9,10 @@
 	let sort = $state<'recent' | 'cited'>('recent');
 	let loading = $state(true);
 	let localNexusId = $state('');
-	let ws: WebSocket | null = null;
 	let liveCount = $state(0);
+
+	const POLL_INTERVAL_MS = 60_000;
+	let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	async function load() {
 		loading = true;
@@ -27,19 +29,62 @@
 		}
 	}
 
+	/**
+	 * Pulls the current top of the recent feed and counts how many of its papers
+	 * are new relative to what's currently rendered. Only meaningful when viewing
+	 * page 1 with the recent sort; a no-op otherwise.
+	 */
+	async function pollForNewPapers() {
+		if (page !== 1 || sort !== 'recent') return;
+		if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+		try {
+			const res = await getFeed({ sort: 'recent', page: 1, page_size: 20 });
+			const known = new Set(papers.map((p) => p.id));
+			const newCount = res.papers.filter((p) => !known.has(p.id)).length;
+			if (newCount > liveCount) {
+				liveCount = newCount;
+			}
+		} catch {
+			/* swallow transient errors; the next tick will try again */
+		}
+	}
+
+	function startPolling() {
+		if (pollTimer !== null) return;
+		pollTimer = setInterval(pollForNewPapers, POLL_INTERVAL_MS);
+	}
+
+	function stopPolling() {
+		if (pollTimer === null) return;
+		clearInterval(pollTimer);
+		pollTimer = null;
+	}
+
+	function handleVisibilityChange() {
+		if (document.visibilityState === 'visible') {
+			startPolling();
+			pollForNewPapers();
+		} else {
+			stopPolling();
+		}
+	}
+
 	onMount(() => {
 		load();
-		ws = connectFeedWS((ev: WSEvent) => {
-			if (ev.event === 'new_paper' && page === 1 && sort === 'recent') {
-				liveCount++;
-			}
-		});
+		startPolling();
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 	});
 
-	onDestroy(() => ws?.close());
+	onDestroy(() => {
+		stopPolling();
+		if (typeof document !== 'undefined') {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		}
+	});
 
 	function changePage(p: number) {
 		page = p;
+		liveCount = 0;
 		load();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
@@ -47,6 +92,7 @@
 	function changeSort(s: 'recent' | 'cited') {
 		sort = s;
 		page = 1;
+		liveCount = 0;
 		load();
 	}
 
