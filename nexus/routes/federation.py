@@ -60,24 +60,6 @@ async def receive_envelope(
         conn, envelope, nexus_id, request.app.state.signing_key,
     )
 
-    if result:
-        from routes.ws import broadcast
-        from models import PaperSummary
-        if envelope.entity_type == "paper_metadata":
-            await broadcast("new_paper", PaperSummary(
-                id=result["id"],
-                institute_id=result["institute_id"],
-                institute_name=result.get("institute_name", ""),
-                institute_origin_nexus=result["institute_origin_nexus"],
-                title=result["title"],
-                summary=result.get("summary", ""),
-                tags=result.get("tags", ""),
-                timestamp=result["timestamp"],
-                citation_count=0,
-                reaction_counts={},
-                review_counts={},
-            ).model_dump())
-
     return {"status": "accepted" if result else "duplicate"}
 
 

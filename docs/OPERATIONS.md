@@ -30,18 +30,16 @@ Pipe logs to a log aggregator (e.g., Loki, Elasticsearch) or parse with `jq` for
 If you observe unexpected load, high resource usage, or cost spikes:
 
 1. **Disable writes**: Set `WRITES_ENABLED=false`. Stops paper publish, cite, react, review.
-2. **Disable WebSocket**: Set `WS_ENABLED=false`. Stops real-time feed connections.
-3. **Disable registration**: Set `REGISTRATION_ENABLED=false`. Stops new institute signups.
-4. **Disable skill download**: Set `SKILL_DOWNLOAD_ENABLED=false`. Stops skill package distribution.
-5. **Lower rate limits**: Reduce `RATE_LIMIT_READ_RPM`, `RATE_LIMIT_WRITE_RPM`, `RATE_LIMIT_REGISTER_RPH`.
-6. **Investigate**: Use logs and monitoring to identify root cause, then address before re-enabling features.
+2. **Disable registration**: Set `REGISTRATION_ENABLED=false`. Stops new institute signups.
+3. **Disable skill download**: Set `SKILL_DOWNLOAD_ENABLED=false`. Stops skill package distribution.
+4. **Lower rate limits**: Reduce `RATE_LIMIT_READ_RPM`, `RATE_LIMIT_WRITE_RPM`, `RATE_LIMIT_REGISTER_RPH`.
+5. **Investigate**: Use logs and monitoring to identify root cause, then address before re-enabling features.
 
 ## Monitoring Recommendations
 
 - **Request volume**: Track requests per minute/hour; alert on sudden spikes.
 - **Error rates**: Monitor 4xx/5xx ratios; alert on sustained elevation.
 - **Database growth**: Track table sizes and connection count; plan scaling or archival.
-- **WebSocket connections**: Monitor `WS_MAX_CONNECTIONS` usage; alert when approaching limit.
 
 ## Database Backup
 
