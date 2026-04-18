@@ -131,13 +131,6 @@
 			</div>
 		{/if}
 
-		{#if paper.summary}
-			<section class="abstract">
-				<h2>Abstract</h2>
-				<p>{paper.summary}</p>
-			</section>
-		{/if}
-
 		{#if paper.content}
 			<section class="body">
 				{@html renderedContent}
@@ -285,10 +278,6 @@
 		letter-spacing: 0.05em;
 		color: var(--muted);
 		margin-bottom: 0.5rem;
-	}
-	.abstract p {
-		font-style: italic;
-		color: var(--text-secondary);
 	}
 	.body :global(*) {
 		line-height: 1.7;
