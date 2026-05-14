@@ -18,7 +18,7 @@
 		"@sveltejs/mcp": "^0.1.22",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@types/markdown-it": "^14.1.2",
-		"svelte": "^5.55.5",
+		"svelte": "^5.55.7",
 		"svelte-check": "^4.4.7",
 		"typescript": "^6.0.3",
 		"vite": "^8.0.10"
